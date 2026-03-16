@@ -1,0 +1,47 @@
+name: AncsBridge
+options:
+  bundleIdPrefix: com.wearos
+  deploymentTarget:
+    iOS: "26.0"
+
+targets:
+  AncsBridge:
+    type: application
+    platform: iOS
+    sources:
+      - AncsBridge
+    info:
+      path: AncsBridge/Info-Generated.plist
+      properties:
+        CFBundleDisplayName: "ANCS Bridge"
+        LSRequiresIPhoneOS: true
+        NSBluetoothAlwaysUsageDescription: "ANCS Bridge needs Bluetooth to connect to your Pixel Watch and forward notifications."
+        NSBluetoothPeripheralUsageDescription: "ANCS Bridge needs Bluetooth to be discoverable by your Pixel Watch."
+        UIBackgroundModes:
+          - bluetooth-peripheral
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.wearos.ancsbridge.companion
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "5.9"
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_ENTITLEMENTS: AncsBridge/AncsBridge.entitlements
+      configs:
+        Debug:
+          CODE_SIGN_IDENTITY: "Apple Development"
+          CODE_SIGN_STYLE: Automatic
+        Release:
+          CODE_SIGN_IDENTITY: "Apple Distribution"
+          CODE_SIGN_STYLE: Automatic
+
+  AncsBridgeTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - AncsBridgeTests
+    dependencies:
+      - target: AncsBridge

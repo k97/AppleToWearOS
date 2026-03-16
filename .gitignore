@@ -1,0 +1,66 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+*~
+
+# Claude Code
+.claude/
+
+# Gradle
+.gradle/
+build/
+local.properties
+*.hprof
+
+# Android
+*.apk
+*.aab
+*.dex
+*.class
+*.so
+gen/
+out/
+captures/
+
+# Kotlin
+*.kotlin_module
+
+# iOS / Xcode
+ios-app/build/
+ios-app/DerivedData/
+DerivedData/
+*.xcuserdata
+*.xcworkspace/xcuserdata/
+*.xcuserstate
+*.moved-aside
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcshareddata/WorkspaceSettings.xcsettings
+Pods/
+
+# Swift Package Manager
+.build/
+Package.resolved
+
+# Misc
+*.log
+*.tmp
+*.bak
+*.orig
