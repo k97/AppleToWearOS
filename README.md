@@ -98,6 +98,18 @@ WhatsApp, iMessage, Gmail, Outlook, Slack, Discord, Telegram, Signal, Instagram,
 
 Unknown apps fall back to category-based icons (phone for calls, envelope for email, etc.).
 
+## Roadmap
+
+- [ ] **Decline with Message (Quick Reply)** — Decline incoming calls with a preset text reply ("Can't talk now", "I'll call you later", "In a meeting"). Routes through the iOS companion app via a custom BLE characteristic, which sends the reply as an SMS/iMessage.
+- [ ] **Vibration Intensity Tuning** — Fine-tune haptic feedback per notification category (calls, messages, emails, timers) to match native Wear OS feel.
+- [ ] **App Icon Support** — Expand icon coverage with Play Store PNGs as `largeIcon` for richer, full-color notification icons on the watch.
+- [ ] **Multi-Device Pairing** — Support pairing and switching between multiple Wear OS watches (e.g., Pixel Watch for weekdays, Galaxy Watch for workouts). Manage bonded devices and persist preferences per watch.
+- [ ] **Health Data Bridge** — Transfer Wear OS health/fitness data (heart rate, steps, workouts) to iPhone via BLE + HealthKit.
+
+## Contributing
+
+Contributions are welcome! Feel free to open issues or submit pull requests.
+
 ## License
 
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
