@@ -17,7 +17,7 @@ class AncsApplication : Application() {
 
         // Delete ALL old channel versions so settings take effect.
         // Android caches channel settings permanently once created.
-        val oldVersions = listOf("", "_v2", "_v3", "_v4")
+        val oldVersions = listOf("", "_v2", "_v3", "_v4", "_v5")
         val channelNames = listOf(
             "ancs_service", "ancs_incoming_call", "ancs_messages",
             "ancs_email", "ancs_social", "ancs_schedule", "ancs_other"
@@ -35,7 +35,11 @@ class AncsApplication : Application() {
                 CHANNEL_SERVICE,
                 "ANCS Bridge Service",
                 NotificationManager.IMPORTANCE_LOW
-            ).apply { description = "Background connection to iPhone" },
+            ).apply {
+                description = "Background connection to iPhone"
+                setSound(null, null)
+                enableVibration(false)
+            },
 
             NotificationChannel(
                 CHANNEL_INCOMING_CALL,
@@ -106,7 +110,7 @@ class AncsApplication : Application() {
     companion object {
         // Channel IDs are versioned — bump the suffix when changing channel settings
         // because Android caches channel settings permanently once created.
-        private const val CHANNEL_VERSION = "v5"
+        private const val CHANNEL_VERSION = "v6"
         const val CHANNEL_SERVICE = "ancs_service_$CHANNEL_VERSION"
         const val CHANNEL_INCOMING_CALL = "ancs_incoming_call_$CHANNEL_VERSION"
         const val CHANNEL_MESSAGES = "ancs_messages_$CHANNEL_VERSION"

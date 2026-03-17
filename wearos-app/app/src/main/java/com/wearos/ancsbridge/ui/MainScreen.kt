@@ -15,10 +15,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.material3.Button
+import androidx.wear.compose.material3.ButtonDefaults
 import androidx.wear.compose.material3.CircularProgressIndicator
 import androidx.wear.compose.material3.ListHeader
 import androidx.wear.compose.material3.Text
@@ -117,8 +119,24 @@ fun MainScreen(viewModel: MainViewModel) {
             is ConnectionState.Connected -> {
                 item {
                     Button(
-                        onClick = { viewModel.disconnect() },
+                        onClick = { viewModel.clearAllNotifications() },
                         modifier = Modifier.fillMaxWidth(0.9f)
+                    ) {
+                        Text("Clear All Notifications")
+                    }
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+
+                item {
+                    Button(
+                        onClick = { viewModel.disconnect() },
+                        modifier = Modifier.fillMaxWidth(0.9f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF374151)
+                        )
                     ) {
                         Text("Disconnect")
                     }

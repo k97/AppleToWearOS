@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.Application
 import android.bluetooth.BluetoothManager
 import android.bluetooth.le.ScanResult
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.util.Log
@@ -162,6 +163,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 name.contains("AncsBrid", ignoreCase = true) ||
                 name.contains("AncsBridge", ignoreCase = true)
         }
+    }
+
+    /**
+     * Clear all ANCS Bridge notifications from the watch.
+     * Frees up slots so new notifications can come through.
+     */
+    fun clearAllNotifications() {
+        val context = getApplication<Application>()
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        // Cancel all except the foreground service notification (ID 1)
+        nm.activeNotifications.forEach { sbn ->
+            if (sbn.id != 1) { // service notification
+                nm.cancel(sbn.id)
+            }
+        }
+        // Also tell the service to reset its tracking
+        val intent = Intent(context, AncsService::class.java).apply {
+            action = AncsService.ACTION_CLEAR_ALL
+        }
+        context.startService(intent)
     }
 
     override fun onCleared() {

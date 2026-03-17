@@ -1,0 +1,23 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Hugeicons: call-end-01-stroke-rounded (free) -->
+    <!-- Phone body -->
+    <path
+        android:pathData="M4.912,10.541L7.552,7.901C8.091,7.362 8.277,6.566 8.059,5.837C7.889,5.266 7.697,4.58 7.57,3.993C7.452,3.45 6.975,3 6.42,3H4.912C3.801,3 2.889,3.904 3.011,5.008C3.937,13.4 10.6,20.063 18.992,20.989C20.096,21.111 21,20.199 21,19.088V17.58C21,17.025 20.548,16.569 20.002,16.47C19.399,16.36 18.761,16.18 18.228,16.01C17.461,15.766 16.609,15.938 16.04,16.507L13.459,19.088"
+        android:strokeWidth="1.5"
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <!-- X mark -->
+    <path
+        android:pathData="M20,4L14,10M20,10L14,4"
+        android:strokeWidth="1.5"
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

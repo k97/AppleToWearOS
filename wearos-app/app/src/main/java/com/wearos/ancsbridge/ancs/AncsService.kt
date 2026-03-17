@@ -53,6 +53,7 @@ class AncsService : Service() {
         const val ACTION_RECONNECT = "com.wearos.ancsbridge.RECONNECT"
         const val ACTION_PERFORM_NOTIFICATION_ACTION = "com.wearos.ancsbridge.PERFORM_ACTION"
         const val ACTION_SEND_QUICK_REPLY = "com.wearos.ancsbridge.QUICK_REPLY"
+        const val ACTION_CLEAR_ALL = "com.wearos.ancsbridge.CLEAR_ALL"
         const val EXTRA_DEVICE_ADDRESS = "device_address"
         const val EXTRA_ACTION_ID = "action_id"
         const val EXTRA_QUICK_REPLY_TEXT = "quick_reply_text"
@@ -168,6 +169,14 @@ class AncsService : Service() {
                     performNotificationAction(uid, actionId)
                 }
             }
+            ACTION_CLEAR_ALL -> {
+                Log.i(TAG, "Clearing all notifications (${activeNotificationIds.size} tracked)")
+                activeNotificationIds.forEach { id ->
+                    notificationManager.cancel(id)
+                }
+                activeNotificationIds.clear()
+                notificationManager.cancel(NOTIFICATION_ID_CALL)
+            }
             ACTION_STOP -> {
                 connectionManager.disconnect()
                 stopForeground(STOP_FOREGROUND_REMOVE)
@@ -209,6 +218,40 @@ class AncsService : Service() {
 
         when {
             event.isAdded || event.isModified -> {
+                // Skip pre-existing notifications at the NS level — don't even
+                // fetch attributes. This avoids GATT writes that trigger system haptics.
+                if (event.isPreExisting) {
+                    Log.d(TAG, "Skipping pre-existing NS event uid=${event.notificationUid}")
+                    return
+                }
+
+                // Also skip during grace period (non-flagged backlog)
+                val now = System.currentTimeMillis()
+                if ((now - subscriptionTime) < reconnectionGracePeriodMs && !event.isIncomingCall) {
+                    Log.d(TAG, "Skipping NS event during grace period uid=${event.notificationUid}")
+                    return
+                }
+
+                if (event.isIncomingCall) {
+                    // IMMEDIATELY show call screen — don't wait for attribute fetch.
+                    // The NS payload already tells us it's a call. We'll update
+                    // the caller name later if attributes arrive in time.
+                    Log.i(TAG, "Incoming call NS event (cat=1) uid=${event.notificationUid} — showing call screen NOW")
+                    showIncomingCall(AncsNotification(
+                        uid = event.notificationUid,
+                        categoryId = event.categoryId,
+                        eventFlags = event.eventFlags,
+                        appIdentifier = "com.apple.mobilephone",
+                        title = "Incoming Call",
+                        subtitle = null,
+                        message = "",
+                        date = null,
+                        appDisplayName = "Phone",
+                        positiveActionLabel = "Answer",
+                        negativeActionLabel = "Decline"
+                    ))
+                }
+
                 // Build list of attributes to request
                 val attrs = mutableListOf(
                     AncsConstants.ATTR_APP_IDENTIFIER,
@@ -220,7 +263,7 @@ class AncsService : Service() {
                 if (event.hasPositiveAction) attrs.add(AncsConstants.ATTR_POSITIVE_ACTION_LABEL)
                 if (event.hasNegativeAction) attrs.add(AncsConstants.ATTR_NEGATIVE_ACTION_LABEL)
 
-                // Enqueue attribute fetch request
+                // Enqueue attribute fetch (for all notifications including calls)
                 scope.launch {
                     attributeRequestQueue.send(AttributeRequest(event, attrs))
                 }
@@ -300,14 +343,26 @@ class AncsService : Service() {
         val updatedNotification = notification.copy(appDisplayName = appName)
 
         // Detect incoming calls by category OR by message content
-        // WhatsApp/FaceTime may send calls as social category but with call-related content
+        // WhatsApp sends calls as cat=4 (Social) with "☎" or "Incoming" in message
+        // Regular phone may send as cat=1 (IncomingCall) or cat=2 with "Incoming" content
+        val callApps = setOf(
+            "net.whatsapp.WhatsApp", "net.whatsapp.WhatsAppSMB",
+            "com.apple.mobilephone", "com.apple.facetime"
+        )
+        val messageAndTitle = "${notification.message} ${notification.title}"
+        val hasCallIndicator = messageAndTitle.contains("Incoming Call", ignoreCase = true) ||
+            messageAndTitle.contains("Incoming Voice", ignoreCase = true) ||
+            messageAndTitle.contains("Incoming Video", ignoreCase = true) ||
+            messageAndTitle.contains("Incoming Audio", ignoreCase = true) ||
+            messageAndTitle.contains("☎") ||
+            messageAndTitle.contains("Audio Call", ignoreCase = true) ||
+            messageAndTitle.contains("Video Call", ignoreCase = true) ||
+            messageAndTitle.contains("Voice Call", ignoreCase = true) ||
+            messageAndTitle.contains("is calling", ignoreCase = true) ||
+            messageAndTitle.contains("Ringing", ignoreCase = true)
         val isIncomingCall = notification.categoryId == AncsConstants.CATEGORY_INCOMING_CALL ||
-            (notification.positiveActionLabel != null && (
-                notification.message.contains("Incoming Call", ignoreCase = true) ||
-                notification.message.contains("Incoming Voice", ignoreCase = true) ||
-                notification.message.contains("Incoming Video", ignoreCase = true) ||
-                notification.title.contains("Incoming Call", ignoreCase = true)
-            ))
+            (notification.positiveActionLabel != null && hasCallIndicator) ||
+            (notification.appIdentifier in callApps && hasCallIndicator)
 
         if (isIncomingCall) {
             Log.i(TAG, "Showing incoming call screen for ${notification.title}")
@@ -316,11 +371,13 @@ class AncsService : Service() {
         }
 
         // Skip pre-existing notifications — they're already on the phone.
-        // (Calls bypass this check above — a live incoming call should always show.)
         if (isPreExisting) {
             Log.d(TAG, "Skipping pre-existing notification uid=${notification.uid}")
             return
         }
+
+        // Grace period and pre-existing checks are now done at the NS event level
+        // (handleNotificationSourceEvent) so we never even fetch attributes for those.
 
         // Route alarm/timer apps to the schedule channel regardless of ANCS category
         val alarmApps = setOf("com.apple.mobiletimer", "com.apple.reminders", "com.apple.mobilecal")
@@ -383,20 +440,18 @@ class AncsService : Service() {
             builder.addAction(R.drawable.ic_close, notification.negativeActionLabel, negativeIntent)
         }
 
-        // Don't vibrate for silent notifications, unless they're important categories
+        val isSilent = notification.eventFlags and AncsConstants.EVENT_FLAG_SILENT != 0
         val importantCategories = setOf(
             AncsConstants.CATEGORY_INCOMING_CALL,
             AncsConstants.CATEGORY_MISSED_CALL,
             AncsConstants.CATEGORY_SOCIAL,
             AncsConstants.CATEGORY_SCHEDULE
         )
-        val isSilent = notification.eventFlags and AncsConstants.EVENT_FLAG_SILENT != 0
-
         val shouldVibrate = !(isSilent && notification.categoryId !in importantCategories)
 
-        if (!shouldVibrate) {
-            builder.setNotificationSilent()
-        }
+        // ALWAYS silence the notification itself — we handle vibration via Vibrator API.
+        // This prevents the channel/system from triggering its own haptics.
+        builder.setNotificationSilent()
 
         // Auto-cleanup: evict oldest notifications if approaching the system cap
         evictOldestIfNeeded()
@@ -404,16 +459,13 @@ class AncsService : Service() {
         notificationManager.notify(notifId, builder.build())
         activeNotificationIds.addLast(notifId)
 
-        // Vibrate directly via Vibrator service — channel vibration is unreliable on Wear OS
-        // Suppress vibration during reconnection grace period (backlog notifications)
-        // and use cooldown to prevent buzz-storm for rapid arrivals
-        val now = System.currentTimeMillis()
-        val inGracePeriod = (now - subscriptionTime) < reconnectionGracePeriodMs
-        if (shouldVibrate && !inGracePeriod && (now - lastVibrationTime) > vibrationCooldownMs) {
+        // Vibrate directly via Vibrator service with cooldown
+        val vibNow = System.currentTimeMillis()
+        if (shouldVibrate && (vibNow - lastVibrationTime) > vibrationCooldownMs) {
             try {
                 val effect = getVibrationEffect(notification.categoryId)
                 vibrator.vibrate(effect)
-                lastVibrationTime = now
+                lastVibrationTime = vibNow
                 Log.d(TAG, "Vibrated directly for uid=${notification.uid}")
             } catch (e: Exception) {
                 Log.w(TAG, "Direct vibration failed: ${e.message}")
@@ -422,40 +474,45 @@ class AncsService : Service() {
     }
 
     /**
-     * Returns a VibrationEffect tuned for the notification category.
-     * Amplitudes are scaled for wrist comfort on Pixel Watch 2.
-     * (User's system vibration intensity slider applies on top of these values.)
+     * Returns a VibrationEffect for the notification category.
+     * Pixel Watch 2 HAL reports resonantFrequencyHz=NaN so custom amplitudes
+     * may not work. We use DEFAULT_AMPLITUDE with short durations to keep
+     * vibrations gentle. System vibration_intensity=MEDIUM scales on top.
+     *
+     * | Category        | Pattern            | Feel              |
+     * |-----------------|--------------------|-------------------|
+     * | Social/Messages | 50ms tap           | Gentle nudge      |
+     * | Email           | 40ms tap           | Light tick        |
+     * | Schedule/Timer  | 60ms + 60ms        | Clear double tap  |
+     * | Missed call     | 50ms x3            | Noticeable        |
+     * | Other/Default   | 50ms tap           | Gentle nudge      |
      */
     private fun getVibrationEffect(categoryId: Int): VibrationEffect {
         return when (categoryId) {
-            // Messages — gentle double-tap
+            // Messages/Social — gentle single tap
             AncsConstants.CATEGORY_SOCIAL,
-            AncsConstants.CATEGORY_OTHER -> VibrationEffect.createWaveform(
-                longArrayOf(0, 50, 100, 50),    // two short taps
-                intArrayOf(0, 80, 0, 80),        // ~31% amplitude
-                -1
+            AncsConstants.CATEGORY_OTHER -> VibrationEffect.createOneShot(
+                50, VibrationEffect.DEFAULT_AMPLITUDE
             )
-            // Email — single subtle tap
+            // Email — light tick
             AncsConstants.CATEGORY_EMAIL -> VibrationEffect.createOneShot(
-                50, 60  // 50ms, ~24% amplitude
+                40, VibrationEffect.DEFAULT_AMPLITUDE
             )
-            // Schedule/alarms/timers — medium double-tap
+            // Schedule/alarms/timers — clear double tap
             AncsConstants.CATEGORY_SCHEDULE -> VibrationEffect.createWaveform(
-                longArrayOf(0, 100, 80, 100),
-                intArrayOf(0, 130, 0, 150),      // ~50-60% amplitude
+                longArrayOf(0, 60, 80, 60),
+                intArrayOf(0, VibrationEffect.DEFAULT_AMPLITUDE, 0, VibrationEffect.DEFAULT_AMPLITUDE),
                 -1
             )
-            // Missed call — noticeable triple-tap
+            // Missed call — noticeable triple tap
             AncsConstants.CATEGORY_MISSED_CALL -> VibrationEffect.createWaveform(
-                longArrayOf(0, 80, 80, 80, 80, 80),
-                intArrayOf(0, 120, 0, 120, 0, 120), // ~47% amplitude
+                longArrayOf(0, 50, 60, 50, 60, 50),
+                intArrayOf(0, VibrationEffect.DEFAULT_AMPLITUDE, 0, VibrationEffect.DEFAULT_AMPLITUDE, 0, VibrationEffect.DEFAULT_AMPLITUDE),
                 -1
             )
-            // Default — gentle double-tap (same as messages)
-            else -> VibrationEffect.createWaveform(
-                longArrayOf(0, 50, 100, 50),
-                intArrayOf(0, 80, 0, 80),
-                -1
+            // Default — gentle single tap
+            else -> VibrationEffect.createOneShot(
+                50, VibrationEffect.DEFAULT_AMPLITUDE
             )
         }
     }
@@ -477,7 +534,8 @@ class AncsService : Service() {
         val callIntent = Intent(this, IncomingCallActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                 Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                Intent.FLAG_ACTIVITY_NO_USER_ACTION
+                Intent.FLAG_ACTIVITY_NO_USER_ACTION or
+                Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
             putExtra(IncomingCallActivity.EXTRA_CALLER_NAME, notification.title)
             putExtra(IncomingCallActivity.EXTRA_NOTIFICATION_UID, notification.uid)
             putExtra(IncomingCallActivity.EXTRA_APP_NAME, notification.appDisplayName ?: "Phone")
@@ -506,11 +564,11 @@ class AncsService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Vibrate with repeating call pattern — stronger than notifications, ~70% amplitude
+        // Vibrate with repeating call pattern — double tap every 2s
         try {
             val callEffect = VibrationEffect.createWaveform(
-                longArrayOf(0, 200, 100, 300, 1000),  // pulse-pulse-pause, repeating
-                intArrayOf(0, 180, 0, 200, 0),         // ~70-80% amplitude
+                longArrayOf(0, 100, 100, 100, 1700),  // tap-tap-pause, repeating
+                intArrayOf(0, VibrationEffect.DEFAULT_AMPLITUDE, 0, VibrationEffect.DEFAULT_AMPLITUDE, 0),
                 0  // repeat from index 0
             )
             vibrator.vibrate(callEffect)

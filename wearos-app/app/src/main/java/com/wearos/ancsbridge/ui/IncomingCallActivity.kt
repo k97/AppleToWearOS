@@ -1,13 +1,14 @@
 package com.wearos.ancsbridge.ui
 
+import android.app.KeyguardManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,10 +23,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -38,16 +39,15 @@ import androidx.wear.compose.material3.ButtonDefaults
 import androidx.wear.compose.material3.FilledTonalButton
 import androidx.wear.compose.material3.Icon
 import androidx.wear.compose.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Message
+import com.wearos.ancsbridge.R
 import com.wearos.ancsbridge.ancs.AncsService
 import com.wearos.ancsbridge.ancs.NotificationActionReceiver
 import com.wearos.ancsbridge.ble.AncsConstants
 import com.wearos.ancsbridge.ui.theme.AncsBridgeTheme
 
 /**
- * Full-screen incoming call activity shown when ANCS reports CategoryID == IncomingCall.
- * Shows caller name with Answer/Decline/Quick Reply buttons.
+ * Full-screen incoming call activity shown when ANCS reports an incoming call.
+ * Shows caller name with Answer/Decline/Quick Reply buttons using Hugeicons.
  * Auto-dismisses when ANCS sends a REMOVE event for the call notification.
  */
 class IncomingCallActivity : ComponentActivity() {
@@ -78,6 +78,17 @@ class IncomingCallActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Show over lock screen and turn screen on
+        setShowWhenLocked(true)
+        setTurnScreenOn(true)
+
+        // Dismiss the keyguard so the call screen is interactive
+        val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+        keyguardManager.requestDismissKeyguard(this, null)
+
+        // Keep screen on while call screen is showing
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         val callerName = intent.getStringExtra(EXTRA_CALLER_NAME) ?: "Unknown Caller"
         val appName = intent.getStringExtra(EXTRA_APP_NAME) ?: "Phone"
@@ -140,10 +151,8 @@ class IncomingCallActivity : ComponentActivity() {
     }
 
     private fun declineWithMessage(message: String) {
-        // Decline the call via ANCS negative action
         performAction(AncsConstants.ACTION_NEGATIVE)
 
-        // Send the quick reply text to the iOS companion app via BLE
         val intent = Intent(this, AncsService::class.java).apply {
             action = AncsService.ACTION_SEND_QUICK_REPLY
             putExtra(AncsService.EXTRA_QUICK_REPLY_TEXT, message)
@@ -198,13 +207,13 @@ fun IncomingCallScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Answer / Decline row
+        // Answer / Quick Reply / Decline row
         Row(
             horizontalArrangement = Arrangement.Center,
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Decline button (red)
+            // Decline button (red) — Hugeicons call-end
             Button(
                 onClick = onDecline,
                 modifier = Modifier.size(48.dp),
@@ -213,26 +222,36 @@ fun IncomingCallScreen(
                     containerColor = Color(0xFFEF4444)
                 )
             ) {
-                Text("✕", fontSize = 20.sp)
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_call_decline),
+                    contentDescription = "Decline",
+                    modifier = Modifier.size(22.dp),
+                    tint = Color.White
+                )
             }
 
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(12.dp))
 
-            // Quick reply button (blue/gray)
+            // Quick reply button (blue) — Hugeicons bubble-chat-notification
             Button(
                 onClick = onQuickReply,
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier.size(44.dp),
                 shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFF3B82F6)
                 )
             ) {
-                Text("\uD83D\uDCAC", fontSize = 18.sp) // speech bubble emoji
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_chat_reply),
+                    contentDescription = "Quick Reply",
+                    modifier = Modifier.size(20.dp),
+                    tint = Color.White
+                )
             }
 
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(12.dp))
 
-            // Answer button (green)
+            // Answer button (green) — Hugeicons call-02
             Button(
                 onClick = onAnswer,
                 modifier = Modifier.size(48.dp),
@@ -241,7 +260,12 @@ fun IncomingCallScreen(
                     containerColor = Color(0xFF22C55E)
                 )
             ) {
-                Text("✓", fontSize = 20.sp)
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_call_answer),
+                    contentDescription = "Answer",
+                    modifier = Modifier.size(22.dp),
+                    tint = Color.White
+                )
             }
         }
     }
