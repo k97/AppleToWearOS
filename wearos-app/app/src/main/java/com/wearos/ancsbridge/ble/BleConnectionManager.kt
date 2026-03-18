@@ -276,8 +276,9 @@ class BleConnectionManager(private val context: Context) {
         // Prefer the bonded name, fall back to GATT device name
         val rawName = bondedName ?: gatt?.device?.name ?: "iPhone"
 
-        // If the name is a truncated BLE name like "AncsBrid", show "iPhone" instead
-        return if (rawName.startsWith("AncsBrid", ignoreCase = true)) {
+        // If the name is a truncated BLE name like "AncsBrid" or "AppleToWe", show "iPhone" instead
+        return if (rawName.startsWith("AncsBrid", ignoreCase = true) ||
+            rawName.startsWith("AppleToWe", ignoreCase = true)) {
             "iPhone"
         } else {
             rawName
@@ -327,7 +328,9 @@ class BleConnectionManager(private val context: Context) {
             val name = device.name ?: ""
             name.contains("iPhone", ignoreCase = true) ||
                 name.contains("AncsBrid", ignoreCase = true) ||
-                name.contains("AncsBridge", ignoreCase = true)
+                name.contains("AncsBridge", ignoreCase = true) ||
+                name.contains("AppleToWe", ignoreCase = true) ||
+                name.contains("AppleToWearOS", ignoreCase = true)
         }
     }
 

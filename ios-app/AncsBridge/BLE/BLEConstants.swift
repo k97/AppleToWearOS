@@ -13,5 +13,5 @@ enum BLEConstants {
     static let restoreIdentifier = "com.wearos.ancsbridge.peripheral"
 
     /// Local name advertised to the watch
-    static let advertisingLocalName = "AncsBridge"
+    static let advertisingLocalName = "AppleToWearOS"
 }
