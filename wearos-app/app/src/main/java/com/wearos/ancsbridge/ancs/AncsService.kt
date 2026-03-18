@@ -404,6 +404,7 @@ class AncsService : Service() {
             AncsApplication.channelForCategory(notification.categoryId)
         }
         val iconResId = AppIconMapper.getIconResId(notification.appIdentifier, notification.categoryId)
+        Log.d(TAG, "Icon mapping: app='${notification.appIdentifier}' cat=${notification.categoryId} -> resId=$iconResId (default=${R.drawable.ic_notification_default})")
         val notifId = notificationIdForUid(notification.uid)
 
         val contentIntent = PendingIntent.getActivity(
@@ -412,23 +413,46 @@ class AncsService : Service() {
             PendingIntent.FLAG_IMMUTABLE
         )
 
+        // Layout: contentTitle = sender, contentText = message preview, subText = app name
+        val senderName = notification.title.ifEmpty { notification.appDisplayName ?: notification.appIdentifier }
+        val messagePreview = notification.message.ifEmpty { notification.subtitle ?: "" }
+        val notifTime = parseAncsDate(notification.date)
+
         val builder = NotificationCompat.Builder(this, channelId)
             .setSmallIcon(iconResId)
-            .setContentTitle(appName ?: notification.appIdentifier)
-            .setContentText(buildNotificationText(updatedNotification))
-            .setSubText(notification.title)
-            .setWhen(parseAncsDate(notification.date))
+            .setContentTitle(senderName)
+            .setContentText(messagePreview)
+            .setSubText(appName ?: notification.appIdentifier)
+            .setTicker("$senderName: $messagePreview")
+            .setWhen(notifTime)
             .setShowWhen(true)
             .setAutoCancel(true)
             .setContentIntent(contentIntent)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(androidCategory(notification.categoryId))
+            // Each notification gets a unique group key to prevent Android's auto-grouping.
+            // Auto-grouping adds SILENT flag via GROUP_ALERT_SUMMARY which kills
+            // heads-up overlays, vibration, and sound on ALL child notifications.
+            .setGroup("ancs_${notification.uid}")
+            .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_ALL)
+            .setSound(android.provider.Settings.System.DEFAULT_NOTIFICATION_URI)
 
-        // Add full message in expanded view
-        if (notification.message.isNotEmpty()) {
+        // MessagingStyle — Samsung One UI Watch renders this with message body
+        // in the heads-up overlay, matching native Android-paired notification style.
+        // BigTextStyle only shows body in expanded view, not the overlay.
+        if (messagePreview.isNotEmpty()) {
+            val person = androidx.core.app.Person.Builder()
+                .setName(senderName)
+                .build()
+            builder.setStyle(
+                NotificationCompat.MessagingStyle(person)
+                    .addMessage(messagePreview, notifTime, person)
+            )
+        } else if (notification.message.isNotEmpty()) {
             builder.setStyle(
                 NotificationCompat.BigTextStyle()
-                    .bigText("${notification.title}\n${notification.message}")
+                    .bigText(notification.message)
+                    .setBigContentTitle(senderName)
                     .setSummaryText(appName)
             )
         }
