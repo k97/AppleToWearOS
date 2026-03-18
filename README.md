@@ -17,13 +17,16 @@ iPhone (iOS 26)                       Wear OS Watch
 ## Features
 
 - **Real-time notification mirroring** — messages, emails, calls, calendar alerts, and more
-- **75+ app icon mappings** — WhatsApp, Slack, Gmail, Instagram, Telegram, Discord, and many more show their own icons
-- **Incoming call screen** — full-screen UI with Answer, Decline, and Quick Reply options
-- **Smart notification filtering** — skips pre-existing notifications on reconnect, respects iOS silent flags
+- **75+ app icon mappings** — WhatsApp, Slack, Gmail, Instagram, Telegram, Discord, and many more show their own icons (Material Design, 25% padded for Wear OS)
+- **Incoming call overlay** — integrated with Android Telecom framework (ConnectionService) for system-level call UI that shows over charging screen and lock screen, with Answer, Decline, and Quick Reply
+- **WhatsApp/FaceTime call detection** — detects VoIP calls via message content heuristics
+- **Smart notification filtering** — skips pre-existing notifications on reconnect, 60-second grace period to avoid vibration storms
+- **Heads-up overlays** — PRIORITY_HIGH + IMPORTANCE_HIGH channels for reliable notification popups
 - **Auto-reconnection** — exponential backoff with `autoConnect` for bonded devices
 - **Boot persistence** — service auto-starts on watch reboot
-- **Haptic feedback** — category-aware vibration patterns (gentle for emails, stronger for calls)
+- **Haptic feedback** — category-aware vibration patterns via direct Vibrator API (50ms for messages, double-tap for calls)
 - **No cloud dependency** — everything runs over local BLE
+- **iOS companion app** — single-screen status UI with auto-detection of connected watches, "How it Works" explainer, and iOS 26 icon theming
 
 ## Tested Hardware
 
@@ -49,15 +52,15 @@ ANCS is a system-level BLE service built into iOS. Any bonded BLE accessory can 
 ├── wearos-app/          # Wear OS app (Kotlin, Jetpack Compose)
 │   └── app/src/main/java/com/wearos/ancsbridge/
 │       ├── ble/         # BLE scanning, connection, GATT callbacks
-│       ├── ancs/        # ANCS protocol: parsing, assembly, service
+│       ├── ancs/        # ANCS protocol, service, Telecom ConnectionService
 │       ├── model/       # Data classes
-│       ├── ui/          # Compose UI (main screen, call screen)
+│       ├── ui/          # Compose UI + Material Icons (main, call screen)
 │       └── viewmodel/   # ViewModel
 │
 ├── ios-app/             # iOS companion app (Swift, optional)
 │   └── AncsBridge/
-│       ├── BLE/         # Peripheral manager
-│       ├── Views/       # SwiftUI views
+│       ├── BLE/         # Peripheral + Central manager, watch detection
+│       ├── Views/       # Single-screen status UI, How it Works
 │       └── ViewModels/  # BLE view model
 │
 └── master-docs/         # Research notes and ANCS spec references
@@ -100,11 +103,15 @@ Unknown apps fall back to category-based icons (phone for calls, envelope for em
 
 ## Roadmap
 
-- [ ] **Decline with Message (Quick Reply)** — Decline incoming calls with a preset text reply ("Can't talk now", "I'll call you later", "In a meeting"). Routes through the iOS companion app via a custom BLE characteristic, which sends the reply as an SMS/iMessage.
-- [ ] **Vibration Intensity Tuning** — Fine-tune haptic feedback per notification category (calls, messages, emails, timers) to match native Wear OS feel.
-- [ ] **App Icon Support** — Expand icon coverage with Play Store PNGs as `largeIcon` for richer, full-color notification icons on the watch.
-- [ ] **Multi-Device Pairing** — Support pairing and switching between multiple Wear OS watches (e.g., Pixel Watch for weekdays, Galaxy Watch for workouts). Manage bonded devices and persist preferences per watch.
-- [ ] **Health Data Bridge** — Transfer Wear OS health/fitness data (heart rate, steps, workouts) to iPhone via BLE + HealthKit.
+- [x] **Incoming Call Overlay** — Telecom ConnectionService integration for system-level call UI
+- [x] **Quick Reply UI** — 3 preset messages on decline (UI ready, BLE transport pending)
+- [x] **Vibration Tuning** — Category-aware haptics via direct Vibrator API (50ms messages, double-tap calls)
+- [x] **Notification Icons** — 37 padded Material Design icons + Lucide call icons
+- [x] **WhatsApp Call Detection** — Heuristic detection of VoIP calls from WhatsApp/FaceTime
+- [ ] **Quick Reply BLE Transport** — Wire decline-with-message text to iOS companion app via custom BLE characteristic
+- [ ] **App Icon Support** — Expand to full-color Play Store PNGs as `largeIcon`
+- [ ] **Multi-Device Pairing** — Support switching between multiple Wear OS watches
+- [ ] **Health Data Bridge** — Transfer Wear OS health/fitness data to iPhone via BLE + HealthKit
 
 ## Contributing
 
