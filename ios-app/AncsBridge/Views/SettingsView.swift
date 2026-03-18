@@ -9,8 +9,8 @@ struct SettingsView: View {
                 Section("Connection") {
                     Toggle("Auto-Advertise on Launch",
                            isOn: Binding(
-                               get: { viewModel.settingsStore.autoAdvertise },
-                               set: { viewModel.settingsStore.autoAdvertise = $0 }
+                               get: { viewModel.peripheralManager.settingsStore.autoAdvertise },
+                               set: { viewModel.peripheralManager.settingsStore.autoAdvertise = $0 }
                            ))
 
                     HStack {
@@ -21,30 +21,6 @@ struct SettingsView: View {
                     }
                 }
 
-                Section("Paired Devices") {
-                    let devices = viewModel.settingsStore.loadPairedDevices()
-                    if devices.isEmpty {
-                        Text("No paired devices")
-                            .foregroundColor(.secondary)
-                    } else {
-                        ForEach(devices) { device in
-                            VStack(alignment: .leading) {
-                                Text(device.name ?? "Unknown Watch")
-                                    .font(.body)
-                                Text("Paired: \(device.firstPairedDate, style: .date)")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                        .onDelete { indexSet in
-                            let devices = viewModel.settingsStore.loadPairedDevices()
-                            for index in indexSet {
-                                viewModel.settingsStore.removePairedDevice(id: devices[index].id)
-                            }
-                        }
-                    }
-                }
-
                 Section("About") {
                     HStack {
                         Text("Version")
@@ -52,14 +28,9 @@ struct SettingsView: View {
                         Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")
                             .foregroundColor(.secondary)
                     }
-
-                    HStack {
-                        Text("How it works")
-                        Spacer()
-                    }
                 }
 
-                Section(footer: Text("ANCS Bridge uses Apple's Notification Center Service (ANCS) to forward notifications from your iPhone to your Pixel Watch over Bluetooth Low Energy. No data is sent to the cloud — everything stays between your devices.")) {
+                Section(footer: Text("AppleToWearOS uses Apple's Notification Center Service (ANCS) to forward notifications from your iPhone to your Pixel Watch over Bluetooth Low Energy. No data is sent to the cloud — everything stays between your devices.")) {
                     EmptyView()
                 }
             }

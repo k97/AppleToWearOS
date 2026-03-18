@@ -141,6 +141,14 @@ class BleConnectionManager(private val context: Context) {
             // ANCS service found — get characteristics
             Log.i(TAG, "ANCS service found!")
             serviceDiscoveryRetries = 0
+
+            // If already subscribed (rediscovery for companion service), just read companion
+            if (notificationSourceChar != null && dataSourceChar != null) {
+                Log.i(TAG, "ANCS already subscribed, checking companion service")
+                readCompanionStatus()
+                return@GattCallback
+            }
+
             notificationSourceChar = ancsService.getCharacteristic(AncsConstants.NOTIFICATION_SOURCE_UUID)
             controlPointChar = ancsService.getCharacteristic(AncsConstants.CONTROL_POINT_UUID)
             dataSourceChar = ancsService.getCharacteristic(AncsConstants.DATA_SOURCE_UUID)
@@ -176,7 +184,13 @@ class BleConnectionManager(private val context: Context) {
                 }
                 AncsConstants.NOTIFICATION_SOURCE_UUID -> {
                     Log.i(TAG, "Subscribed to Notification Source — ANCS session active!")
-                    _connectionState.value = ConnectionState.Connected(gatt?.device?.name)
+                    // Use the bonded device name (may have full iPhone name)
+                    // or fall back to the GATT device name
+                    val deviceName = resolveDeviceName()
+                    _connectionState.value = ConnectionState.Connected(deviceName)
+                    // Read the companion app's status characteristic to notify the
+                    // iPhone app that the watch is connected
+                    readCompanionStatus()
                 }
             }
 
@@ -245,6 +259,51 @@ class BleConnectionManager(private val context: Context) {
         char.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
         char.value = data
         return gatt.writeCharacteristic(char)
+    }
+
+    /**
+     * Resolve a user-friendly device name from the bonded device list or GATT connection.
+     * BLE advertised names are often truncated (e.g., "AncsBrid" instead of "iPhone").
+     */
+    private fun resolveDeviceName(): String {
+        // Check bonded devices for a full name containing "iPhone"
+        val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+        val adapter = bluetoothManager.adapter
+        val bondedName = adapter?.bondedDevices?.firstOrNull { device ->
+            device.address == gatt?.device?.address
+        }?.name
+
+        // Prefer the bonded name, fall back to GATT device name
+        val rawName = bondedName ?: gatt?.device?.name ?: "iPhone"
+
+        // If the name is a truncated BLE name like "AncsBrid", show "iPhone" instead
+        return if (rawName.startsWith("AncsBrid", ignoreCase = true)) {
+            "iPhone"
+        } else {
+            rawName
+        }
+    }
+
+    /**
+     * Read the companion app's status characteristic to notify the iPhone app
+     * that the watch has connected. This triggers didReceiveRead on the iOS side.
+     */
+    private fun readCompanionStatus() {
+        val gatt = this.gatt ?: return
+        val companionServiceUuid = java.util.UUID.fromString("A0E3D5B1-4C6F-4E8A-9B2D-7F1E3A5C8D0B")
+        val statusCharUuid = java.util.UUID.fromString("A0E3D5B2-4C6F-4E8A-9B2D-7F1E3A5C8D0B")
+        val service = gatt.getService(companionServiceUuid)
+        if (service != null) {
+            val char = service.getCharacteristic(statusCharUuid)
+            if (char != null) {
+                gatt.readCharacteristic(char)
+                Log.i(TAG, "Reading companion status characteristic to notify iPhone app")
+            } else {
+                Log.d(TAG, "Companion status characteristic not found")
+            }
+        } else {
+            Log.d(TAG, "Companion service not found — iPhone companion app may not be running")
+        }
     }
 
     fun disconnect() {

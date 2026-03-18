@@ -13,10 +13,10 @@ targets:
     info:
       path: AncsBridge/Info-Generated.plist
       properties:
-        CFBundleDisplayName: "ANCS Bridge"
+        CFBundleDisplayName: "AppleToWearOS"
         LSRequiresIPhoneOS: true
-        NSBluetoothAlwaysUsageDescription: "ANCS Bridge needs Bluetooth to connect to your Pixel Watch and forward notifications."
-        NSBluetoothPeripheralUsageDescription: "ANCS Bridge needs Bluetooth to be discoverable by your Pixel Watch."
+        NSBluetoothAlwaysUsageDescription: "AppleToWearOS needs Bluetooth to connect to your Pixel Watch and forward notifications."
+        NSBluetoothPeripheralUsageDescription: "AppleToWearOS needs Bluetooth to be discoverable by your Pixel Watch."
         UIBackgroundModes:
           - bluetooth-peripheral
         UILaunchScreen: {}
@@ -30,6 +30,9 @@ targets:
         SWIFT_VERSION: "5.9"
         TARGETED_DEVICE_FAMILY: "1"
         CODE_SIGN_ENTITLEMENTS: AncsBridge/AncsBridge.entitlements
+        DEVELOPMENT_TEAM: R68RHN3HF5
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: "YES"
       configs:
         Debug:
           CODE_SIGN_IDENTITY: "Apple Development"

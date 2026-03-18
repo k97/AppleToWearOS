@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">ANCS Bridge</string>
+    <string name="app_name">AppleToWearOS</string>
     <string name="scan_for_iphone">Scan for iPhone</string>
     <string name="scanning">Scanning…</string>
     <string name="connecting">Connecting…</string>

@@ -47,7 +47,7 @@ import com.wearos.ancsbridge.ui.theme.AncsBridgeTheme
 
 /**
  * Full-screen incoming call activity shown when ANCS reports an incoming call.
- * Shows caller name with Answer/Decline/Quick Reply buttons using Hugeicons.
+ * Shows caller name with Answer/Decline/Quick Reply buttons using Lucide icons.
  * Auto-dismisses when ANCS sends a REMOVE event for the call notification.
  */
 class IncomingCallActivity : ComponentActivity() {
@@ -57,6 +57,7 @@ class IncomingCallActivity : ComponentActivity() {
         const val EXTRA_NOTIFICATION_UID = "notification_uid"
         const val EXTRA_APP_NAME = "app_name"
         const val ACTION_CALL_ENDED = "com.wearos.ancsbridge.CALL_ENDED"
+        const val ACTION_CALLER_NAME_UPDATED = "com.wearos.ancsbridge.CALLER_NAME_UPDATED"
 
         val QUICK_REPLIES = listOf(
             "Can't talk now",
@@ -67,11 +68,18 @@ class IncomingCallActivity : ComponentActivity() {
 
     private var notificationUid: Long = -1
     private var showingReplies = mutableStateOf(false)
+    private var callerNameState = mutableStateOf("Unknown Caller")
 
     private val callEndedReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            if (intent.action == ACTION_CALL_ENDED) {
-                finish()
+            when (intent.action) {
+                ACTION_CALL_ENDED -> finish()
+                ACTION_CALLER_NAME_UPDATED -> {
+                    val name = intent.getStringExtra(EXTRA_CALLER_NAME)
+                    if (!name.isNullOrEmpty()) {
+                        callerNameState.value = name
+                    }
+                }
             }
         }
     }
@@ -90,16 +98,20 @@ class IncomingCallActivity : ComponentActivity() {
         // Keep screen on while call screen is showing
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-        val callerName = intent.getStringExtra(EXTRA_CALLER_NAME) ?: "Unknown Caller"
+        callerNameState.value = intent.getStringExtra(EXTRA_CALLER_NAME) ?: "Unknown Caller"
         val appName = intent.getStringExtra(EXTRA_APP_NAME) ?: "Phone"
         notificationUid = intent.getLongExtra(EXTRA_NOTIFICATION_UID, -1)
 
-        registerReceiver(callEndedReceiver, IntentFilter(ACTION_CALL_ENDED),
-            RECEIVER_NOT_EXPORTED)
+        val filter = IntentFilter().apply {
+            addAction(ACTION_CALL_ENDED)
+            addAction(ACTION_CALLER_NAME_UPDATED)
+        }
+        registerReceiver(callEndedReceiver, filter, RECEIVER_NOT_EXPORTED)
 
         setContent {
             AncsBridgeTheme {
                 val showReplies by showingReplies
+                val callerName by callerNameState
 
                 if (showReplies) {
                     QuickReplyScreen(
@@ -213,7 +225,7 @@ fun IncomingCallScreen(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Decline button (red) — Hugeicons call-end
+            // Decline button (red) — Lucide phone-off
             Button(
                 onClick = onDecline,
                 modifier = Modifier.size(48.dp),
@@ -232,7 +244,7 @@ fun IncomingCallScreen(
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // Quick reply button (blue) — Hugeicons bubble-chat-notification
+            // Quick reply button (blue) — Lucide message-circle
             Button(
                 onClick = onQuickReply,
                 modifier = Modifier.size(44.dp),
@@ -251,7 +263,7 @@ fun IncomingCallScreen(
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // Answer button (green) — Hugeicons call-02
+            // Answer button (green) — Lucide phone
             Button(
                 onClick = onAnswer,
                 modifier = Modifier.size(48.dp),

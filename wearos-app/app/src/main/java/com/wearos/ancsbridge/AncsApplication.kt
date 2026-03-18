@@ -1,6 +1,7 @@
 package com.wearos.ancsbridge
 
 import android.app.Application
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import com.wearos.ancsbridge.ble.AncsConstants
@@ -17,7 +18,7 @@ class AncsApplication : Application() {
 
         // Delete ALL old channel versions so settings take effect.
         // Android caches channel settings permanently once created.
-        val oldVersions = listOf("", "_v2", "_v3", "_v4", "_v5")
+        val oldVersions = listOf("", "_v2", "_v3", "_v4", "_v5", "_v6")
         val channelNames = listOf(
             "ancs_service", "ancs_incoming_call", "ancs_messages",
             "ancs_email", "ancs_social", "ancs_schedule", "ancs_other"
@@ -28,17 +29,16 @@ class AncsApplication : Application() {
             }
         }
 
-        // All channels have vibration DISABLED — we handle vibration directly
-        // via the Vibrator API in AncsService for reliable haptics on Wear OS.
+        // Channels use system defaults for vibration and sound — this ensures
+        // the app respects the user's watch-level vibration/sound settings and
+        // gets proper heads-up/overlay display. No manual overrides.
         val channels = listOf(
             NotificationChannel(
                 CHANNEL_SERVICE,
-                "ANCS Bridge Service",
+                "AppleToWearOS Service",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
                 description = "Background connection to iPhone"
-                setSound(null, null)
-                enableVibration(false)
             },
 
             NotificationChannel(
@@ -48,8 +48,7 @@ class AncsApplication : Application() {
             ).apply {
                 description = "Incoming phone calls from iPhone"
                 setBypassDnd(true)
-                enableVibration(false)
-                setSound(null, null)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             },
 
             NotificationChannel(
@@ -58,8 +57,6 @@ class AncsApplication : Application() {
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = "iMessage, WhatsApp, and other messaging apps"
-                enableVibration(false)
-                setSound(null, null)
             },
 
             NotificationChannel(
@@ -68,8 +65,6 @@ class AncsApplication : Application() {
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = "Email notifications"
-                enableVibration(false)
-                setSound(null, null)
             },
 
             NotificationChannel(
@@ -78,8 +73,6 @@ class AncsApplication : Application() {
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = "Social media notifications"
-                enableVibration(false)
-                setSound(null, null)
             },
 
             NotificationChannel(
@@ -89,8 +82,6 @@ class AncsApplication : Application() {
             ).apply {
                 description = "Calendar reminders, alarms, and timers from iPhone"
                 setBypassDnd(true)
-                enableVibration(false)
-                setSound(null, null)
             },
 
             NotificationChannel(
@@ -99,8 +90,6 @@ class AncsApplication : Application() {
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = "Other notifications"
-                enableVibration(false)
-                setSound(null, null)
             }
         )
 
@@ -110,7 +99,7 @@ class AncsApplication : Application() {
     companion object {
         // Channel IDs are versioned — bump the suffix when changing channel settings
         // because Android caches channel settings permanently once created.
-        private const val CHANNEL_VERSION = "v6"
+        private const val CHANNEL_VERSION = "v7"
         const val CHANNEL_SERVICE = "ancs_service_$CHANNEL_VERSION"
         const val CHANNEL_INCOMING_CALL = "ancs_incoming_call_$CHANNEL_VERSION"
         const val CHANNEL_MESSAGES = "ancs_messages_$CHANNEL_VERSION"

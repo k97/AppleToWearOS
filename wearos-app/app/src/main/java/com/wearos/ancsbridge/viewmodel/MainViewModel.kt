@@ -28,8 +28,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _isScanning = MutableStateFlow(false)
     val isScanning: StateFlow<Boolean> = _isScanning.asStateFlow()
 
-    private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Idle)
-    val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
+    // Observe the service's shared connection state directly
+    val connectionState: StateFlow<ConnectionState> = AncsService.sharedConnectionState
 
     private val _scanStatus = MutableStateFlow("")
     val scanStatus: StateFlow<String> = _scanStatus.asStateFlow()
@@ -103,7 +103,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun connectToDevice(address: String) {
         stopScan()
-        _connectionState.value = ConnectionState.Connecting(null)
 
         val context = getApplication<Application>()
         val intent = Intent(context, AncsService::class.java).apply {
@@ -118,8 +117,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      * Used when we know the iPhone's classic BT address from Settings.
      */
     fun connectByAddress(address: String) {
-        _connectionState.value = ConnectionState.Connecting(null)
-
         val context = getApplication<Application>()
         val intent = Intent(context, AncsService::class.java).apply {
             action = AncsService.ACTION_CONNECT
@@ -150,7 +147,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             action = AncsService.ACTION_DISCONNECT
         }
         context.startService(intent)
-        _connectionState.value = ConnectionState.Idle
     }
 
     fun hasBondedIPhone(): Boolean {

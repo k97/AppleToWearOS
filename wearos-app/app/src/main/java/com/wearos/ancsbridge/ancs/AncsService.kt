@@ -8,7 +8,6 @@ import android.app.Service
 import android.bluetooth.BluetoothDevice
 import android.content.Intent
 import android.os.IBinder
-import android.os.VibrationEffect
 import android.os.Vibrator
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -29,6 +28,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -59,6 +61,10 @@ class AncsService : Service() {
         const val EXTRA_QUICK_REPLY_TEXT = "quick_reply_text"
         const val NOTIFICATION_ID_CALL = 999
         private const val MAX_ACTIVE_NOTIFICATIONS = 20 // Android limit is 25; keep headroom
+
+        /** Shared connection state observable by the ViewModel */
+        private val _sharedConnectionState = MutableStateFlow<ConnectionState>(ConnectionState.Idle)
+        val sharedConnectionState: StateFlow<ConnectionState> = _sharedConnectionState.asStateFlow()
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -74,12 +80,11 @@ class AncsService : Service() {
     private val activeNotificationIds = ArrayDeque<Int>()
 
     // Vibration cooldown — don't vibrate more than once every 3 seconds
-    private var lastVibrationTime = 0L
-    private val vibrationCooldownMs = 3000L
 
     // Reconnection grace period — suppress vibration for notifications arriving
     // in the first 60 seconds after subscribing (they're backlog, not truly new)
     private var subscriptionTime = 0L
+    private var activeCallUid: Long = -1
     private val reconnectionGracePeriodMs = 60_000L
 
     // Serial queue for Control Point requests
@@ -101,6 +106,10 @@ class AncsService : Service() {
         // Register bond state receiver
         registerReceiver(connectionManager.bondStateReceiver, BondStateReceiver.intentFilter)
 
+        // Register PhoneAccount for Telecom framework integration
+        // This lets us show incoming calls via the system call UI
+        AncsConnectionService.registerPhoneAccount(this)
+
         startForeground(SERVICE_NOTIFICATION_ID, buildServiceNotification("Starting..."))
 
         // Listen for Notification Source events
@@ -117,9 +126,12 @@ class AncsService : Service() {
             }
         }
 
-        // Update service notification based on connection state
+        // Update service notification and shared state based on connection state
         scope.launch {
             connectionManager.connectionState.collectLatest { state ->
+                // Publish to shared flow so ViewModel can observe
+                _sharedConnectionState.value = state
+
                 val text = when (state) {
                     is ConnectionState.Idle -> "Idle"
                     is ConnectionState.Scanning -> "Scanning..."
@@ -274,11 +286,16 @@ class AncsService : Service() {
                 notificationManager.cancel(removedId)
                 activeNotificationIds.remove(removedId)
 
-                // If this was an incoming call, dismiss the call screen, notification, and vibration
-                if (event.isIncomingCall) {
+                // If this was an incoming call, dismiss everything
+                if (event.isIncomingCall || activeCallUid == event.notificationUid) {
+                    Log.i(TAG, "Call ended (REMOVE) uid=${event.notificationUid}")
+                    activeCallUid = -1
                     vibrator.cancel()
                     notificationManager.cancel(NOTIFICATION_ID_CALL)
-                    sendBroadcast(Intent(IncomingCallActivity.ACTION_CALL_ENDED))
+                    AncsConnectionService.endActiveCall()
+                    sendBroadcast(Intent(IncomingCallActivity.ACTION_CALL_ENDED).apply {
+                        setPackage(packageName)
+                    })
                 }
             }
         }
@@ -404,6 +421,7 @@ class AncsService : Service() {
             .setShowWhen(true)
             .setAutoCancel(true)
             .setContentIntent(contentIntent)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(androidCategory(notification.categoryId))
 
         // Add full message in expanded view
@@ -440,81 +458,15 @@ class AncsService : Service() {
             builder.addAction(R.drawable.ic_close, notification.negativeActionLabel, negativeIntent)
         }
 
-        val isSilent = notification.eventFlags and AncsConstants.EVENT_FLAG_SILENT != 0
-        val importantCategories = setOf(
-            AncsConstants.CATEGORY_INCOMING_CALL,
-            AncsConstants.CATEGORY_MISSED_CALL,
-            AncsConstants.CATEGORY_SOCIAL,
-            AncsConstants.CATEGORY_SCHEDULE
-        )
-        val shouldVibrate = !(isSilent && notification.categoryId !in importantCategories)
-
-        // ALWAYS silence the notification itself — we handle vibration via Vibrator API.
-        // This prevents the channel/system from triggering its own haptics.
-        builder.setNotificationSilent()
+        // Never call setNotificationSilent() — it suppresses the heads-up overlay
+        // on Wear OS. Let the channel handle sound/vibration. We handle vibration
+        // manually via the Vibrator API with cooldown, so no double-buzz.
 
         // Auto-cleanup: evict oldest notifications if approaching the system cap
         evictOldestIfNeeded()
 
         notificationManager.notify(notifId, builder.build())
         activeNotificationIds.addLast(notifId)
-
-        // Vibrate directly via Vibrator service with cooldown
-        val vibNow = System.currentTimeMillis()
-        if (shouldVibrate && (vibNow - lastVibrationTime) > vibrationCooldownMs) {
-            try {
-                val effect = getVibrationEffect(notification.categoryId)
-                vibrator.vibrate(effect)
-                lastVibrationTime = vibNow
-                Log.d(TAG, "Vibrated directly for uid=${notification.uid}")
-            } catch (e: Exception) {
-                Log.w(TAG, "Direct vibration failed: ${e.message}")
-            }
-        }
-    }
-
-    /**
-     * Returns a VibrationEffect for the notification category.
-     * Pixel Watch 2 HAL reports resonantFrequencyHz=NaN so custom amplitudes
-     * may not work. We use DEFAULT_AMPLITUDE with short durations to keep
-     * vibrations gentle. System vibration_intensity=MEDIUM scales on top.
-     *
-     * | Category        | Pattern            | Feel              |
-     * |-----------------|--------------------|-------------------|
-     * | Social/Messages | 50ms tap           | Gentle nudge      |
-     * | Email           | 40ms tap           | Light tick        |
-     * | Schedule/Timer  | 60ms + 60ms        | Clear double tap  |
-     * | Missed call     | 50ms x3            | Noticeable        |
-     * | Other/Default   | 50ms tap           | Gentle nudge      |
-     */
-    private fun getVibrationEffect(categoryId: Int): VibrationEffect {
-        return when (categoryId) {
-            // Messages/Social — gentle single tap
-            AncsConstants.CATEGORY_SOCIAL,
-            AncsConstants.CATEGORY_OTHER -> VibrationEffect.createOneShot(
-                50, VibrationEffect.DEFAULT_AMPLITUDE
-            )
-            // Email — light tick
-            AncsConstants.CATEGORY_EMAIL -> VibrationEffect.createOneShot(
-                40, VibrationEffect.DEFAULT_AMPLITUDE
-            )
-            // Schedule/alarms/timers — clear double tap
-            AncsConstants.CATEGORY_SCHEDULE -> VibrationEffect.createWaveform(
-                longArrayOf(0, 60, 80, 60),
-                intArrayOf(0, VibrationEffect.DEFAULT_AMPLITUDE, 0, VibrationEffect.DEFAULT_AMPLITUDE),
-                -1
-            )
-            // Missed call — noticeable triple tap
-            AncsConstants.CATEGORY_MISSED_CALL -> VibrationEffect.createWaveform(
-                longArrayOf(0, 50, 60, 50, 60, 50),
-                intArrayOf(0, VibrationEffect.DEFAULT_AMPLITUDE, 0, VibrationEffect.DEFAULT_AMPLITUDE, 0, VibrationEffect.DEFAULT_AMPLITUDE),
-                -1
-            )
-            // Default — gentle single tap
-            else -> VibrationEffect.createOneShot(
-                50, VibrationEffect.DEFAULT_AMPLITUDE
-            )
-        }
     }
 
     /**
@@ -531,64 +483,86 @@ class AncsService : Service() {
 
     @SuppressLint("WakelockTimeout")
     private fun showIncomingCall(notification: AncsNotification) {
+        val callerName = notification.title.ifEmpty { "Incoming Call" }
+        val appName = notification.appDisplayName ?: "Phone"
+
+        // Track active call UID to avoid duplicate showIncomingCall calls
+        if (activeCallUid == notification.uid) {
+            // Already showing — just update caller name if it changed
+            if (callerName != "Incoming Call") {
+                AncsConnectionService.activeConnection?.updateCallerName(callerName)
+                // Also update the IncomingCallActivity via broadcast
+                sendBroadcast(Intent(IncomingCallActivity.ACTION_CALLER_NAME_UPDATED).apply {
+                    setPackage(packageName)
+                    putExtra(IncomingCallActivity.EXTRA_CALLER_NAME, callerName)
+                })
+                Log.i(TAG, "Updated caller name to '$callerName' for uid=${notification.uid}")
+            }
+            return
+        }
+        activeCallUid = notification.uid
+
+        // 1. Report to Telecom framework — self-managed connection allows
+        //    our foreground service to launch activities while ringing
+        AncsConnectionService.reportIncomingCall(
+            this, notification.uid, callerName, appName
+        )
+
+        // 2. Directly launch call activity — the Telecom self-managed connection
+        //    grants us the background activity start exception
         val callIntent = Intent(this, IncomingCallActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                 Intent.FLAG_ACTIVITY_CLEAR_TOP or
                 Intent.FLAG_ACTIVITY_NO_USER_ACTION or
                 Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-            putExtra(IncomingCallActivity.EXTRA_CALLER_NAME, notification.title)
+            putExtra(IncomingCallActivity.EXTRA_CALLER_NAME, callerName)
             putExtra(IncomingCallActivity.EXTRA_NOTIFICATION_UID, notification.uid)
-            putExtra(IncomingCallActivity.EXTRA_APP_NAME, notification.appDisplayName ?: "Phone")
+            putExtra(IncomingCallActivity.EXTRA_APP_NAME, appName)
         }
-
-        // Wake the screen first — the watch may be sleeping
-        val powerManager = getSystemService(android.os.PowerManager::class.java)
-        val wakeLock = powerManager.newWakeLock(
-            android.os.PowerManager.FULL_WAKE_LOCK or
-                android.os.PowerManager.ACQUIRE_CAUSES_WAKEUP or
-                android.os.PowerManager.ON_AFTER_RELEASE,
-            "ancsbridge:call_wakelock"
-        )
-        wakeLock.acquire(30_000) // 30 seconds max
-
-        // Directly launch the call activity
         try {
             startActivity(callIntent)
-            Log.i(TAG, "Started IncomingCallActivity directly")
+            Log.i(TAG, "Started IncomingCallActivity directly for '$callerName'")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start IncomingCallActivity: ${e.message}")
         }
 
+        // 3. Post CallStyle notification as fallback
         val fullScreenPendingIntent = PendingIntent.getActivity(
             this, 0, callIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-
-        // Vibrate with repeating call pattern — double tap every 2s
-        try {
-            val callEffect = VibrationEffect.createWaveform(
-                longArrayOf(0, 100, 100, 100, 1700),  // tap-tap-pause, repeating
-                intArrayOf(0, VibrationEffect.DEFAULT_AMPLITUDE, 0, VibrationEffect.DEFAULT_AMPLITUDE, 0),
-                0  // repeat from index 0
-            )
-            vibrator.vibrate(callEffect)
-        } catch (e: Exception) {
-            Log.w(TAG, "Call vibration failed: ${e.message}")
-        }
-
-        // Also post a notification as backup (heads-up + full-screen intent)
+        val answerPendingIntent = PendingIntent.getActivity(
+            this, 1, callIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val declinePendingIntent = PendingIntent.getBroadcast(
+            this, 2,
+            Intent(NotificationActionReceiver.ACTION_NEGATIVE).apply {
+                setPackage(packageName)
+                putExtra(NotificationActionReceiver.EXTRA_NOTIFICATION_UID, notification.uid)
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val caller = androidx.core.app.Person.Builder()
+            .setName(callerName)
+            .setImportant(true)
+            .build()
         val callNotification = NotificationCompat.Builder(this, AncsApplication.CHANNEL_INCOMING_CALL)
             .setSmallIcon(R.drawable.ic_phone)
-            .setContentTitle(notification.appDisplayName ?: "Phone")
-            .setContentText("${notification.title} — Incoming Call")
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(Notification.CATEGORY_CALL)
             .setFullScreenIntent(fullScreenPendingIntent, true)
-            .setAutoCancel(true)
             .setOngoing(true)
+            .setAutoCancel(false)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setStyle(
+                NotificationCompat.CallStyle.forIncomingCall(
+                    caller, declinePendingIntent, answerPendingIntent
+                )
+            )
             .build()
-
         notificationManager.notify(NOTIFICATION_ID_CALL, callNotification)
+        Log.i(TAG, "Posted CallStyle notification for '$callerName'")
     }
 
 
@@ -665,7 +639,7 @@ class AncsService : Service() {
         )
         return NotificationCompat.Builder(this, AncsApplication.CHANNEL_SERVICE)
             .setSmallIcon(R.drawable.ic_notification_default)
-            .setContentTitle("ANCS Bridge")
+            .setContentTitle("AppleToWearOS")
             .setContentText(text)
             .setContentIntent(intent)
             .setOngoing(true)

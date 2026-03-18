@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>ANCS Bridge</string>
+	<string>AppleToWearOS</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -23,9 +23,9 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>ANCS Bridge needs Bluetooth to connect to your Pixel Watch and forward notifications.</string>
+	<string>AppleToWearOS needs Bluetooth to connect to your Pixel Watch and forward notifications.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
-	<string>ANCS Bridge needs Bluetooth to be discoverable by your Pixel Watch.</string>
+	<string>AppleToWearOS needs Bluetooth to be discoverable by your Pixel Watch.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>bluetooth-peripheral</string>

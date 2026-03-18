@@ -50,6 +50,7 @@ dependencies {
     implementation("androidx.wear.compose:compose-material3:1.0.0-alpha29")
     implementation("androidx.wear.compose:compose-foundation:1.4.1")
     implementation("androidx.wear.compose:compose-navigation:1.4.1")
+    implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
     debugImplementation("androidx.compose.ui:ui-tooling")
