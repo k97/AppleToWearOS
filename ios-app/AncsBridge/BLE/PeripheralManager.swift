@@ -2,7 +2,7 @@ import CoreBluetooth
 import Combine
 import os.log
 
-/// Manages BLE for the AppleToWearOS companion app.
+/// Manages BLE for the WearBridge companion app.
 ///
 /// Acts as both:
 /// - CBPeripheralManager: advertises for initial watch pairing

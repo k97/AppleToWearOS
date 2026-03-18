@@ -30,7 +30,7 @@ struct SettingsView: View {
                     }
                 }
 
-                Section(footer: Text("AppleToWearOS uses Apple's Notification Center Service (ANCS) to forward notifications from your iPhone to your Pixel Watch over Bluetooth Low Energy. No data is sent to the cloud — everything stays between your devices.")) {
+                Section(footer: Text("WearBridge uses Apple's Notification Center Service (ANCS) to forward notifications from your iPhone to your Pixel Watch over Bluetooth Low Energy. No data is sent to the cloud — everything stays between your devices.")) {
                     EmptyView()
                 }
             }

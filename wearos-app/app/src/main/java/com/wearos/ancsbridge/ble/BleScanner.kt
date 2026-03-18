@@ -31,7 +31,7 @@ class BleScanner(private val context: Context) {
         get() = bluetoothAdapter?.isEnabled == true
 
     /**
-     * Scan for the AncsBridge iOS companion app (by its custom service UUID).
+     * Scan for the WearBridge iOS companion app (by its custom service UUID).
      * This is the primary scan mode — finds the iPhone reliably.
      */
     fun scanForCompanion(): Flow<ScanResult> = callbackFlow {

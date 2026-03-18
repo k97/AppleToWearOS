@@ -47,7 +47,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun scanAndConnect() {
         if (_isScanning.value) return
         _isScanning.value = true
-        _scanStatus.value = "Looking for AncsBridge app..."
+        _scanStatus.value = "Looking for WearBridge app..."
         discoveredAppleDevices.clear()
 
         scanJob = viewModelScope.launch {
@@ -56,7 +56,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             launch {
                 delay(10_000)
                 if (_isScanning.value && !found) {
-                    _scanStatus.value = "AncsBridge app not found.\nOpen it on your iPhone."
+                    _scanStatus.value = "WearBridge app not found.\nOpen it on your iPhone."
                     stopScan()
                 }
             }
@@ -157,12 +157,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val name = device.name ?: ""
             name.contains("iPhone", ignoreCase = true) ||
                 name.contains("AncsBrid", ignoreCase = true) ||
-                name.contains("AncsBridge", ignoreCase = true)
+                name.contains("AncsBridge", ignoreCase = true) ||
+                name.contains("WearBridge", ignoreCase = true) ||
+                name.contains("WearBrid", ignoreCase = true)
         }
     }
 
     /**
-     * Clear all ANCS Bridge notifications from the watch.
+     * Clear all WearBridge notifications from the watch.
      * Frees up slots so new notifications can come through.
      */
     fun clearAllNotifications() {

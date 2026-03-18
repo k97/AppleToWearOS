@@ -2,8 +2,7 @@
   "fill" : "system-light",
   "groups" : [
     {
-      "blend-mode" : "normal",
-      "blur-material" : 0.5,
+      "blur-material" : 0.05,
       "hidden-specializations" : [
         {
           "idiom" : "square",
@@ -12,53 +11,26 @@
       ],
       "layers" : [
         {
-          "blend-mode" : "normal",
-          "fill" : "automatic",
-          "glass" : true,
-          "hidden-specializations" : [
-            {
-              "idiom" : "square",
-              "value" : true
-            }
-          ],
-          "image-name" : "icon-light.png",
-          "name" : "icon-light"
+          "image-name" : "icon-dark 2.png",
+          "name" : "icon-dark 2"
         },
         {
-          "blend-mode" : "normal",
-          "fill" : "none",
-          "glass" : true,
-          "hidden-specializations" : [
-            {
-              "idiom" : "square",
-              "value" : false
-            }
-          ],
-          "image-name" : "icon-dark.png",
-          "name" : "icon-dark"
+          "image-name" : "icon-light 2.png",
+          "name" : "icon-light 2"
         },
         {
-          "fill" : "automatic",
-          "glass" : true,
-          "hidden-specializations" : [
-            {
-              "idiom" : "square",
-              "value" : false
-            }
-          ],
-          "image-name" : "icon-tinted.png",
-          "name" : "icon-tinted"
+          "image-name" : "icon-tinted 2.png",
+          "name" : "icon-tinted 2"
         }
       ],
-      "lighting" : "individual",
       "shadow" : {
         "kind" : "layer-color",
-        "opacity" : 0.49
+        "opacity" : 0.6
       },
       "specular" : true,
       "translucency" : {
         "enabled" : true,
-        "value" : 0.11
+        "value" : 0.1
       }
     }
   ],

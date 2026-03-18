@@ -10,7 +10,7 @@ struct HowItWorksView: View {
                     Image(systemName: "antenna.radiowaves.left.and.right.circle.fill")
                         .font(.system(size: 50))
                         .foregroundColor(.blue)
-                    Text("How AppleToWearOS Works")
+                    Text("How WearBridge Works")
                         .font(.title2)
                         .fontWeight(.bold)
                         .multilineTextAlignment(.center)

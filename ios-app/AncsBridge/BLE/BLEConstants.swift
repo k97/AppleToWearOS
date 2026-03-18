@@ -1,6 +1,6 @@
 import CoreBluetooth
 
-/// BLE constants for the ANCS Bridge companion app.
+/// BLE constants for the WearBridge companion app.
 /// Note: ANCS itself is system-managed. These are for our custom companion service.
 enum BLEConstants {
     /// Custom service UUID for the companion app (not ANCS — that's system-managed)
@@ -13,5 +13,5 @@ enum BLEConstants {
     static let restoreIdentifier = "com.wearos.ancsbridge.peripheral"
 
     /// Local name advertised to the watch
-    static let advertisingLocalName = "AppleToWearOS"
+    static let advertisingLocalName = "WearBridge"
 }

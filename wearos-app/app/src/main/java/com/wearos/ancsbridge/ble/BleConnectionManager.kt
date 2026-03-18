@@ -330,7 +330,9 @@ class BleConnectionManager(private val context: Context) {
                 name.contains("AncsBrid", ignoreCase = true) ||
                 name.contains("AncsBridge", ignoreCase = true) ||
                 name.contains("AppleToWe", ignoreCase = true) ||
-                name.contains("AppleToWearOS", ignoreCase = true)
+                name.contains("AppleToWearOS", ignoreCase = true) ||
+                name.contains("WearBridge", ignoreCase = true) ||
+                name.contains("WearBrid", ignoreCase = true)
         }
     }
 

@@ -13,10 +13,10 @@ targets:
     info:
       path: AncsBridge/Info-Generated.plist
       properties:
-        CFBundleDisplayName: "AppleToWearOS"
+        CFBundleDisplayName: "WearBridge"
         LSRequiresIPhoneOS: true
-        NSBluetoothAlwaysUsageDescription: "AppleToWearOS needs Bluetooth to connect to your Pixel Watch and forward notifications."
-        NSBluetoothPeripheralUsageDescription: "AppleToWearOS needs Bluetooth to be discoverable by your Pixel Watch."
+        NSBluetoothAlwaysUsageDescription: "WearBridge needs Bluetooth to connect to your Pixel Watch and forward notifications."
+        NSBluetoothPeripheralUsageDescription: "WearBridge needs Bluetooth to be discoverable by your Pixel Watch."
         UIBackgroundModes:
           - bluetooth-peripheral
         UILaunchScreen: {}

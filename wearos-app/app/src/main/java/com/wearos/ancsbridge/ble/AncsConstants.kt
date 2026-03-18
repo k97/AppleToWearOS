@@ -11,7 +11,7 @@ object AncsConstants {
     // ANCS Service UUID
     val ANCS_SERVICE_UUID: UUID = UUID.fromString("7905F431-B5CE-4E99-A40F-4B1E122D00D0")
 
-    // iOS Companion App Service UUID (advertised by the AncsBridge iOS app)
+    // iOS Companion App Service UUID (advertised by the WearBridge iOS app)
     val COMPANION_SERVICE_UUID: UUID = UUID.fromString("A0E3D5B1-4C6F-4E8A-9B2D-7F1E3A5C8D0B")
 
     // ANCS Characteristic UUIDs

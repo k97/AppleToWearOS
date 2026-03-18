@@ -47,7 +47,7 @@ fun MainScreen(viewModel: MainViewModel) {
     ) {
         item {
             ListHeader {
-                Text("AppleToWearOS")
+                Text("WearBridge")
             }
         }
 

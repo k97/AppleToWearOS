@@ -47,13 +47,13 @@ class AncsConnectionService : ConnectionService() {
          */
         fun registerPhoneAccount(context: Context) {
             val handle = getPhoneAccountHandle(context)
-            val account = PhoneAccount.builder(handle, "ANCS Bridge")
+            val account = PhoneAccount.builder(handle, "WearBridge")
                 .setCapabilities(PhoneAccount.CAPABILITY_SELF_MANAGED)
                 .build()
 
             val telecomManager = context.getSystemService(TelecomManager::class.java)
             telecomManager.registerPhoneAccount(account)
-            Log.i(TAG, "Registered PhoneAccount for ANCS Bridge")
+            Log.i(TAG, "Registered PhoneAccount for WearBridge")
         }
 
         /**

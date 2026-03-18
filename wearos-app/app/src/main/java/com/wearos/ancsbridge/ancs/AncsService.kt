@@ -663,7 +663,7 @@ class AncsService : Service() {
         )
         return NotificationCompat.Builder(this, AncsApplication.CHANNEL_SERVICE)
             .setSmallIcon(R.drawable.ic_notification_default)
-            .setContentTitle("AppleToWearOS")
+            .setContentTitle("WearBridge")
             .setContentText(text)
             .setContentIntent(intent)
             .setOngoing(true)

@@ -1,4 +1,8 @@
-# AppleToWearOS
+<p align="center">
+  <img src="master-docs/AppleToWearOS/icon-light.png" width="120" alt="WearBridge icon" />
+</p>
+
+# WearBridge
 
 Mirror iPhone notifications to Wear OS watches over Bluetooth Low Energy using Apple's ANCS (Apple Notification Center Service) protocol. Fully local — no cloud relay, no companion phone app required.
 

@@ -53,24 +53,30 @@ struct StatusView: View {
                         }
                     } else {
                         ForEach(viewModel.peripheralManager.discoveredWatches) { watch in
-                            HStack(spacing: 12) {
-                                Image(systemName: "applewatch")
-                                    .font(.title3)
-                                    .foregroundColor(.green)
-                                    .frame(width: 30)
+                            Button {
+                                showBluetoothSettings()
+                            } label: {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "applewatch")
+                                        .font(.title3)
+                                        .foregroundColor(.green)
+                                        .frame(width: 30)
 
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(watch.name)
-                                        .font(.body)
-                                    Text("Connected via ANCS")
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(watch.name)
+                                            .font(.body)
+                                            .foregroundColor(.primary)
+                                        Text("Connected via ANCS")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+
+                                    Spacer()
+
+                                    Image(systemName: "chevron.right")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                 }
-
-                                Spacer()
-
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(.green)
                             }
                             .padding(.vertical, 2)
                         }
@@ -121,10 +127,10 @@ struct StatusView: View {
                             .foregroundColor(.secondary)
                     }
                 } footer: {
-                    Text("AppleToWearOS uses Apple's ANCS to forward notifications over Bluetooth. All data stays local.")
+                    Text("WearBridge uses Apple's ANCS to forward notifications over Bluetooth. All data stays local.")
                 }
             }
-            .navigationTitle("AppleToWearOS")
+            .navigationTitle("WearBridge")
         }
     }
 
@@ -163,6 +169,12 @@ struct StatusView: View {
         case .poweredOff: return "Turn on Bluetooth to forward notifications."
         case .unauthorized: return "Allow Bluetooth access in Settings."
         default: return "Bluetooth is not available."
+        }
+    }
+
+    private func showBluetoothSettings() {
+        if let url = URL(string: UIApplication.openSettingsURLString) {
+            UIApplication.shared.open(url)
         }
     }
 
