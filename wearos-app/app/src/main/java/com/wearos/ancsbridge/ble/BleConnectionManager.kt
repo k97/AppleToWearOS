@@ -84,7 +84,8 @@ class BleConnectionManager(private val context: Context) {
     private val gattCallback = GattCallback(
         onConnected = { gatt ->
             reconnectDelay = INITIAL_RECONNECT_DELAY_MS
-            _connectionState.value = ConnectionState.Connecting(gatt.device.name)
+            val displayName = if (isTruncatedBleName(gatt.device.name ?: "")) "iPhone" else (gatt.device.name ?: "iPhone")
+            _connectionState.value = ConnectionState.Connecting(displayName)
 
             // Request higher MTU for less fragmentation
             gatt.requestMtu(TARGET_MTU)
@@ -112,7 +113,8 @@ class BleConnectionManager(private val context: Context) {
                 // ANCS not visible — likely not bonded yet
                 if (gatt.device.bondState != BluetoothDevice.BOND_BONDED) {
                     Log.i(TAG, "ANCS not found, initiating bonding")
-                    _connectionState.value = ConnectionState.Bonding(gatt.device.name)
+                    val bondDisplayName = if (isTruncatedBleName(gatt.device.name ?: "")) "iPhone" else (gatt.device.name ?: "iPhone")
+                    _connectionState.value = ConnectionState.Bonding(bondDisplayName)
                     gatt.device.createBond()
                 } else {
                     // Bonded but ANCS still not visible — retry once, then give up
@@ -184,12 +186,12 @@ class BleConnectionManager(private val context: Context) {
                 }
                 AncsConstants.NOTIFICATION_SOURCE_UUID -> {
                     Log.i(TAG, "Subscribed to Notification Source — ANCS session active!")
-                    // Use the bonded device name (may have full iPhone name)
-                    // or fall back to the GATT device name
+                    // Show initial name (may be truncated BLE name)
                     val deviceName = resolveDeviceName()
                     _connectionState.value = ConnectionState.Connected(deviceName)
-                    // Read the companion app's status characteristic to notify the
-                    // iPhone app that the watch is connected
+                    // Read the real iPhone name from GAP service
+                    readGapDeviceName()
+                    // Read companion status to notify iPhone app
                     readCompanionStatus()
                 }
             }
@@ -206,6 +208,9 @@ class BleConnectionManager(private val context: Context) {
             Log.i(TAG, "MTU negotiated: $mtu (status=$status)")
             // After MTU negotiation, discover services
             gatt?.discoverServices()
+        },
+        onCharacteristicReadCallback = { characteristic, value ->
+            onCharacteristicRead(characteristic.uuid, value)
         }
     )
 
@@ -213,12 +218,20 @@ class BleConnectionManager(private val context: Context) {
      * Connect to a BLE device (iPhone).
      */
     fun connect(device: BluetoothDevice, autoReconnect: Boolean = true) {
+        // Guard: skip if already connected or connecting to this device
+        val currentState = _connectionState.value
+        if (gatt != null && gatt?.device?.address == device.address &&
+            (currentState is ConnectionState.Connected || currentState is ConnectionState.Connecting)) {
+            Log.d(TAG, "Already connected/connecting to ${device.address}, skipping")
+            return
+        }
+
         reconnectJob?.cancel()
         this.autoReconnect = autoReconnect
         this.targetDevice = device
         this.serviceDiscoveryRetries = 0
 
-        _connectionState.value = ConnectionState.Connecting(device.name)
+        _connectionState.value = ConnectionState.Connecting(if (isTruncatedBleName(device.name ?: "")) "iPhone" else (device.name ?: "iPhone"))
 
         gatt?.close()
         gatt = device.connectGatt(
@@ -233,12 +246,20 @@ class BleConnectionManager(private val context: Context) {
      * Reconnect to a previously bonded device using autoConnect.
      */
     fun reconnect(device: BluetoothDevice) {
+        // Guard: skip if already connected or connecting to this device
+        val currentState = _connectionState.value
+        if (gatt != null && gatt?.device?.address == device.address &&
+            (currentState is ConnectionState.Connected || currentState is ConnectionState.Connecting)) {
+            Log.d(TAG, "Already connected/connecting to ${device.address}, skipping reconnect")
+            return
+        }
+
         reconnectJob?.cancel()
         this.targetDevice = device
         this.autoReconnect = true
         this.serviceDiscoveryRetries = 0
 
-        _connectionState.value = ConnectionState.Connecting(device.name)
+        _connectionState.value = ConnectionState.Connecting(if (isTruncatedBleName(device.name ?: "")) "iPhone" else (device.name ?: "iPhone"))
 
         gatt?.close()
         gatt = device.connectGatt(
@@ -261,12 +282,18 @@ class BleConnectionManager(private val context: Context) {
         return gatt.writeCharacteristic(char)
     }
 
+    /** Cached real device name read from GAP characteristic */
+    private var cachedDeviceName: String? = null
+
     /**
      * Resolve a user-friendly device name from the bonded device list or GATT connection.
      * BLE advertised names are often truncated (e.g., "AncsBrid" instead of "iPhone").
      */
     private fun resolveDeviceName(): String {
-        // Check bonded devices for a full name containing "iPhone"
+        // Return cached GAP name if available
+        cachedDeviceName?.let { return it }
+
+        // Check bonded devices for a full name
         val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
         val adapter = bluetoothManager.adapter
         val bondedName = adapter?.bondedDevices?.firstOrNull { device ->
@@ -276,14 +303,51 @@ class BleConnectionManager(private val context: Context) {
         // Prefer the bonded name, fall back to GATT device name
         val rawName = bondedName ?: gatt?.device?.name ?: "iPhone"
 
-        // If the name is a truncated BLE name like "AncsBrid" or "AppleToWe", show "iPhone" instead
-        return if (rawName.startsWith("AncsBrid", ignoreCase = true) ||
-            rawName.startsWith("AppleToWe", ignoreCase = true)) {
-            "iPhone"
-        } else {
-            rawName
+        // If the name is a truncated BLE name, show "iPhone" instead
+        return if (isTruncatedBleName(rawName)) "iPhone" else rawName
+    }
+
+    private fun isTruncatedBleName(name: String): Boolean {
+        return name.startsWith("AncsBrid", ignoreCase = true) ||
+            name.startsWith("AppleToWe", ignoreCase = true) ||
+            name.startsWith("WearBrid", ignoreCase = true) ||
+            name.startsWith("WearBridge", ignoreCase = true)
+    }
+
+    /**
+     * Read the real device name from the GAP (Generic Access Profile) service.
+     * The Device Name characteristic (0x2A00) contains the actual iPhone name
+     * (e.g., "Karthik's iPhone Max") rather than the truncated BLE advertising name.
+     */
+    fun readGapDeviceName() {
+        val gatt = this.gatt ?: return
+        val gapServiceUuid = java.util.UUID.fromString("00001800-0000-1000-8000-00805f9b34fb")
+        val deviceNameUuid = java.util.UUID.fromString("00002A00-0000-1000-8000-00805f9b34fb")
+        val service = gatt.getService(gapServiceUuid) ?: return
+        val char = service.getCharacteristic(deviceNameUuid) ?: return
+        gatt.readCharacteristic(char)
+        Log.i(TAG, "Reading GAP Device Name characteristic")
+    }
+
+    /**
+     * Called from GattCallback when a characteristic read completes.
+     * If it's the GAP Device Name, cache and broadcast it.
+     */
+    fun onCharacteristicRead(characteristicUuid: java.util.UUID, value: ByteArray) {
+        val deviceNameUuid = java.util.UUID.fromString("00002A00-0000-1000-8000-00805f9b34fb")
+        if (characteristicUuid == deviceNameUuid) {
+            val name = String(value, Charsets.UTF_8)
+            if (name.isNotBlank() && !isTruncatedBleName(name)) {
+                cachedDeviceName = name
+                Log.i(TAG, "GAP Device Name: $name")
+                _connectionState.value = ConnectionState.Connected(name)
+                onDeviceNameResolved?.invoke(name)
+            }
         }
     }
+
+    /** Callback to notify the UI when the real device name is resolved */
+    var onDeviceNameResolved: ((String) -> Unit)? = null
 
     /**
      * Read the companion app's status characteristic to notify the iPhone app

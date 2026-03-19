@@ -21,7 +21,8 @@ class GattCallback(
     private val onDataSourceChanged: (ByteArray) -> Unit,
     private val onDescriptorWritten: (BluetoothGattDescriptor, Int) -> Unit,
     private val onCharacteristicWritten: (BluetoothGattCharacteristic, Int) -> Unit,
-    private val onMtuChanged: (Int, Int) -> Unit
+    private val onMtuChanged: (Int, Int) -> Unit,
+    private val onCharacteristicReadCallback: ((BluetoothGattCharacteristic, ByteArray) -> Unit)? = null
 ) : BluetoothGattCallback() {
 
     companion object {
@@ -102,6 +103,19 @@ class GattCallback(
     ) {
         Log.d(TAG, "Characteristic written: ${characteristic.uuid} status=$status")
         onCharacteristicWritten(characteristic, status)
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onCharacteristicRead(
+        gatt: BluetoothGatt,
+        characteristic: BluetoothGattCharacteristic,
+        status: Int
+    ) {
+        if (status == BluetoothGatt.GATT_SUCCESS) {
+            val value = characteristic.value ?: return
+            Log.d(TAG, "Characteristic read: ${characteristic.uuid} (${value.size} bytes)")
+            onCharacteristicReadCallback?.invoke(characteristic, value)
+        }
     }
 
     override fun onMtuChanged(gatt: BluetoothGatt, mtu: Int, status: Int) {

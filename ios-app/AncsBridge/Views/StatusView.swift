@@ -15,41 +15,132 @@ struct StatusView: View {
                         .padding(.horizontal)
                         .padding(.top, 8)
 
-                    // Features Card
-                    Button { showFeatureSheet = true } label: {
-                        VStack(alignment: .leading, spacing: 14) {
-                            Text("What WearBridge Does")
-                                .font(.headline)
+                    // Features Card — editorial style
+                    VStack(alignment: .leading, spacing: 0) {
+                        // Illustration
+                        ZStack {
+                            // Gradient background
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 0.93, green: 0.96, blue: 0.98),
+                                    Color(red: 0.85, green: 0.92, blue: 0.97)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+
+                            // Watch + phone illustration
+                            HStack(spacing: -10) {
+                                // Phone
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color.white)
+                                        .frame(width: 60, height: 100)
+                                        .shadow(color: .black.opacity(0.08), radius: 8, y: 4)
+                                    VStack(spacing: 4) {
+                                        RoundedRectangle(cornerRadius: 2)
+                                            .fill(Color(red: 0.85, green: 0.88, blue: 0.92))
+                                            .frame(width: 36, height: 6)
+                                        RoundedRectangle(cornerRadius: 2)
+                                            .fill(Color(red: 0.85, green: 0.88, blue: 0.92))
+                                            .frame(width: 36, height: 6)
+                                        RoundedRectangle(cornerRadius: 2)
+                                            .fill(Color.blue.opacity(0.3))
+                                            .frame(width: 36, height: 6)
+                                        RoundedRectangle(cornerRadius: 2)
+                                            .fill(Color(red: 0.85, green: 0.88, blue: 0.92))
+                                            .frame(width: 36, height: 6)
+                                    }
+                                }
+                                .rotationEffect(.degrees(-8))
+
+                                // Arrow
+                                Image(systemName: "arrow.right")
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundColor(.blue.opacity(0.5))
+                                    .padding(.horizontal, 14)
+
+                                // Watch
+                                ZStack {
+                                    Circle()
+                                        .fill(Color.black)
+                                        .frame(width: 80, height: 80)
+                                        .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
+                                    Circle()
+                                        .fill(
+                                            LinearGradient(
+                                                colors: [Color(red: 0.15, green: 0.15, blue: 0.2), Color(red: 0.08, green: 0.08, blue: 0.12)],
+                                                startPoint: .top, endPoint: .bottom
+                                            )
+                                        )
+                                        .frame(width: 72, height: 72)
+                                    // Watch face content
+                                    VStack(spacing: 3) {
+                                        Image(systemName: "bell.badge.fill")
+                                            .font(.system(size: 16))
+                                            .foregroundColor(.green)
+                                        Text("WearBridge")
+                                            .font(.system(size: 6, weight: .medium))
+                                            .foregroundColor(.white.opacity(0.7))
+                                    }
+                                    // Watch band hints
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .fill(Color(red: 0.25, green: 0.25, blue: 0.3))
+                                        .frame(width: 24, height: 14)
+                                        .offset(y: -44)
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .fill(Color(red: 0.25, green: 0.25, blue: 0.3))
+                                        .frame(width: 24, height: 14)
+                                        .offset(y: 44)
+                                }
+                                .rotationEffect(.degrees(8))
+                            }
+                        }
+                        .frame(height: 180)
+                        .clipShape(
+                            UnevenRoundedRectangle(
+                                topLeadingRadius: 14, bottomLeadingRadius: 0,
+                                bottomTrailingRadius: 0, topTrailingRadius: 14
+                            )
+                        )
+
+                        // Title + subtitle + button
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Your iPhone, on your wrist")
+                                .font(.title3)
+                                .fontWeight(.bold)
                                 .foregroundColor(.primary)
 
-                            LazyVGrid(columns: [
-                                GridItem(.flexible()),
-                                GridItem(.flexible()),
-                                GridItem(.flexible())
-                            ], spacing: 14) {
-                                featureChip(icon: "phone.connection.fill", color: .green, label: "Calls")
-                                featureChip(icon: "app.badge.fill", color: .blue, label: "Notifications")
-                                featureChip(icon: "bubble.left.and.text.bubble.right.fill", color: .purple, label: "Quick Reply")
-                                featureChip(icon: "bolt.horizontal.fill", color: .orange, label: "Auto Reconnect")
-                                featureChip(icon: "hand.raised.circle.fill", color: .mint, label: "Privacy First")
-                                featureChip(icon: "water.waves", color: .pink, label: "Haptics")
-                            }
+                            Text("Calls, messages, and notifications — mirrored instantly over Bluetooth. No cloud, fully private.")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .lineSpacing(2)
 
-                            HStack {
-                                Text("Tap to see supported devices")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                Spacer()
-                                Image(systemName: "chevron.right")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+                            Button { showFeatureSheet = true } label: {
+                                HStack {
+                                    Text("See what's supported")
+                                        .font(.subheadline)
+                                        .fontWeight(.semibold)
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption)
+                                }
+                                .foregroundColor(.blue)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(Color.blue.opacity(0.1))
+                                .cornerRadius(10)
                             }
+                            .buttonStyle(.plain)
                         }
                         .padding(16)
                         .background(Color(.secondarySystemGroupedBackground))
-                        .cornerRadius(14)
+                        .clipShape(
+                            UnevenRoundedRectangle(
+                                topLeadingRadius: 0, bottomLeadingRadius: 14,
+                                bottomTrailingRadius: 14, topTrailingRadius: 0
+                            )
+                        )
                     }
-                    .buttonStyle(.plain)
                     .padding(.horizontal)
 
                     // Your Watches
