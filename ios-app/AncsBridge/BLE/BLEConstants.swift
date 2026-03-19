@@ -9,6 +9,9 @@ enum BLEConstants {
     /// Characteristic: connection status (readable, notifiable)
     static let connectionStatusUUID = CBUUID(string: "A0E3D5B2-4C6F-4E8A-9B2D-7F1E3A5C8D0B")
 
+    /// Characteristic: quick reply (writable by watch)
+    static let quickReplyCharacteristicUUID = CBUUID(string: "A0E3D5B3-4C6F-4E8A-9B2D-7F1E3A5C8D0B")
+
     /// State restoration identifier
     static let restoreIdentifier = "com.wearos.ancsbridge.peripheral"
 

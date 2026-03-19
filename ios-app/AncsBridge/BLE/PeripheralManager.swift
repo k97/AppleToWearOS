@@ -1,5 +1,6 @@
 import CoreBluetooth
 import Combine
+import UIKit
 import os.log
 
 /// Manages BLE for the WearBridge companion app.
@@ -65,6 +66,7 @@ class PeripheralManager: NSObject, ObservableObject {
     // MARK: - Connected Watch Discovery
 
     /// Query the system for BLE peripherals currently connected that look like watches.
+    /// Merges with persisted watches so offline ones still appear in the list.
     func refreshConnectedWatches() {
         guard centralManager.state == .poweredOn else { return }
 
@@ -79,34 +81,71 @@ class PeripheralManager: NSObject, ObservableObject {
         }
 
         // Filter to likely watches by name
-        let watches = found.values.compactMap { peripheral -> DiscoveredWatch? in
-            guard let name = peripheral.name, !name.isEmpty else { return nil }
+        var connectedWatchIds = Set<String>()
+        var result: [DiscoveredWatch] = []
+
+        for peripheral in found.values {
+            guard let name = peripheral.name, !name.isEmpty else { continue }
             let lower = name.lowercased()
-
-            // Check if name matches known watch patterns
             let isWatch = Self.watchNamePatterns.contains { lower.contains($0) }
+            let savedWatches = loadPersistedWatches()
+            let wasPreviouslySeen = savedWatches.contains { $0.id == peripheral.identifier.uuidString }
 
-            // Also include any device we've seen before (saved identifiers)
-            let savedIds = UserDefaults.standard.stringArray(forKey: "knownWatchIds") ?? []
-            let wasPreviouslySeen = savedIds.contains(peripheral.identifier.uuidString)
+            guard isWatch || wasPreviouslySeen else { continue }
 
-            guard isWatch || wasPreviouslySeen else { return nil }
+            // Persist this watch
+            savePersistedWatch(PersistedWatch(id: peripheral.identifier.uuidString, name: name))
+            connectedWatchIds.insert(peripheral.identifier.uuidString)
 
-            // Save this identifier for future recognition
-            var ids = Set(savedIds)
-            ids.insert(peripheral.identifier.uuidString)
-            UserDefaults.standard.set(Array(ids), forKey: "knownWatchIds")
-
-            return DiscoveredWatch(
+            result.append(DiscoveredWatch(
                 id: peripheral.identifier,
                 name: name,
+                isConnected: true,
                 peripheral: peripheral
-            )
+            ))
+        }
+
+        // Add offline (persisted but not currently connected) watches
+        for saved in loadPersistedWatches() {
+            if !connectedWatchIds.contains(saved.id), let uuid = UUID(uuidString: saved.id) {
+                result.append(DiscoveredWatch(
+                    id: uuid,
+                    name: saved.name,
+                    isConnected: false,
+                    peripheral: nil
+                ))
+            }
         }
 
         DispatchQueue.main.async {
-            self.discoveredWatches = watches
-            self.logger.info("Found \(watches.count) connected watch(es): \(watches.map { $0.name }.joined(separator: ", "))")
+            // Connected watches first, then offline
+            self.discoveredWatches = result.sorted { $0.isConnected && !$1.isConnected }
+            let connected = result.filter { $0.isConnected }.count
+            self.logger.info("Watches: \(connected) connected, \(result.count - connected) offline")
+        }
+    }
+
+    // MARK: - Watch Persistence
+
+    private static let persistedWatchesKey = "persistedWatches"
+
+    private func loadPersistedWatches() -> [PersistedWatch] {
+        guard let data = UserDefaults.standard.data(forKey: Self.persistedWatchesKey),
+              let watches = try? JSONDecoder().decode([PersistedWatch].self, from: data) else {
+            return []
+        }
+        return watches
+    }
+
+    private func savePersistedWatch(_ watch: PersistedWatch) {
+        var watches = loadPersistedWatches()
+        if let index = watches.firstIndex(where: { $0.id == watch.id }) {
+            watches[index] = watch
+        } else {
+            watches.append(watch)
+        }
+        if let data = try? JSONEncoder().encode(watches) {
+            UserDefaults.standard.set(data, forKey: Self.persistedWatchesKey)
         }
     }
 
@@ -161,11 +200,18 @@ class PeripheralManager: NSObject, ObservableObject {
             permissions: [.readable]
         )
 
+        let quickReplyCharacteristic = CBMutableCharacteristic(
+            type: BLEConstants.quickReplyCharacteristicUUID,
+            properties: [.write, .writeWithoutResponse],
+            value: nil,
+            permissions: [.writeable]
+        )
+
         companionService = CBMutableService(
             type: BLEConstants.companionServiceUUID,
             primary: true
         )
-        companionService?.characteristics = [statusCharacteristic!]
+        companionService?.characteristics = [statusCharacteristic!, quickReplyCharacteristic]
 
         peripheralManager.add(companionService!)
         serviceAdded = true
@@ -220,6 +266,34 @@ extension PeripheralManager: CBPeripheralManagerDelegate {
         }
     }
 
+    func peripheralManager(_ peripheral: CBPeripheralManager, didReceiveWrite requests: [CBATTRequest]) {
+        for request in requests {
+            if request.characteristic.uuid == BLEConstants.quickReplyCharacteristicUUID,
+               let data = request.value,
+               let payload = String(data: data, encoding: .utf8) {
+                logger.info("Quick reply received: \(payload)")
+                handleQuickReply(payload)
+            }
+            peripheral.respond(to: request, withResult: .success)
+        }
+    }
+
+    private func handleQuickReply(_ payload: String) {
+        let encoded = payload.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? payload
+        let urlString = "shortcuts://run-shortcut?name=WearBridge%20Reply&input=text&text=\(encoded)"
+        if let url = URL(string: urlString) {
+            DispatchQueue.main.async {
+                UIApplication.shared.open(url) { success in
+                    if success {
+                        self.logger.info("Opened WearBridge Reply shortcut")
+                    } else {
+                        self.logger.error("Failed to open Shortcuts — is 'WearBridge Reply' shortcut created?")
+                    }
+                }
+            }
+        }
+    }
+
     func peripheralManager(_ peripheral: CBPeripheralManager, willRestoreState dict: [String: Any]) {
         logger.info("Restoring peripheral manager state")
         if let services = dict[CBPeripheralManagerRestoredStateServicesKey] as? [CBMutableService] {
@@ -252,5 +326,12 @@ extension PeripheralManager: CBCentralManagerDelegate {
 struct DiscoveredWatch: Identifiable {
     let id: UUID
     let name: String
-    let peripheral: CBPeripheral
+    let isConnected: Bool
+    let peripheral: CBPeripheral?
+}
+
+// MARK: - Persisted Watch (for offline display)
+struct PersistedWatch: Codable {
+    let id: String // UUID string
+    let name: String
 }

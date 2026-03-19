@@ -181,6 +181,13 @@ class AncsService : Service() {
                     performNotificationAction(uid, actionId)
                 }
             }
+            ACTION_SEND_QUICK_REPLY -> {
+                val replyText = intent.getStringExtra(EXTRA_QUICK_REPLY_TEXT) ?: return START_STICKY
+                val callerName = intent.getStringExtra("caller_name") ?: "Unknown"
+                val payload = "$callerName|$replyText"
+                Log.i(TAG, "Sending quick reply via BLE: $payload")
+                connectionManager.writeQuickReply(payload)
+            }
             ACTION_CLEAR_ALL -> {
                 Log.i(TAG, "Clearing all notifications (${activeNotificationIds.size} tracked)")
                 activeNotificationIds.forEach { id ->

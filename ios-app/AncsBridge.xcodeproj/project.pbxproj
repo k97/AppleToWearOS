@@ -12,10 +12,13 @@
 		246322911A02C982C0331924 /* StatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 076673E488AFB468ED2E2EF9 /* StatusView.swift */; };
 		25BCDC2B3260F8615BAF50A9 /* PairedDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6C58B6974D26A3FA57422FB /* PairedDevice.swift */; };
 		3DA84E7D7CE3E1D3A54D315E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 77C36C2AFA8EA8C56AF8471D /* Assets.xcassets */; };
+		4181448E736418ED1E58AEFC /* AddWatchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B0BF9F2B6715DF8C2DDD8B8 /* AddWatchView.swift */; };
+		5A538DB399C1CBD93A665EBA /* QuickReplyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72C8FAE0AB0196096C3D7552 /* QuickReplyStore.swift */; };
 		98910C98FC720871E4544C25 /* HowItWorksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03B56BE4BCAB856A9AFE50DB /* HowItWorksView.swift */; };
 		9B3BB8D8B67A12F25A4D6F26 /* AncsBridgeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC04AAF2152DC8E522F12619 /* AncsBridgeApp.swift */; };
 		B6CCF526A866F740469E261D /* SettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7CC11B1B20F374C838167B5 /* SettingsStore.swift */; };
 		B95E39797258FB0B69F70575 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE26FD7165900DB79D1EAA05 /* ContentView.swift */; };
+		BADFA7CC5AEE06DFBD06B68F /* QuickReplySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C4E6DA939E59F8521934572 /* QuickReplySettingsView.swift */; };
 		BAF4F26B9E9AC17651F796F1 /* ConnectionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD247F6A8BEECDA55C238CC2 /* ConnectionState.swift */; };
 		C64BBEB053EDA70670D3A4F7 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE23C48EE7171805E83E7C74 /* SettingsView.swift */; };
 		E0FE400394C388A4F3E3D11E /* PeripheralManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CD7E830A5834A54112C3678 /* PeripheralManager.swift */; };
@@ -35,6 +38,7 @@
 /* Begin PBXFileReference section */
 		03B56BE4BCAB856A9AFE50DB /* HowItWorksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HowItWorksView.swift; sourceTree = "<group>"; };
 		076673E488AFB468ED2E2EF9 /* StatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusView.swift; sourceTree = "<group>"; };
+		0C4E6DA939E59F8521934572 /* QuickReplySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickReplySettingsView.swift; sourceTree = "<group>"; };
 		1BB2863CCCC6897C7008FFB7 /* AncsBridgeTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AncsBridgeTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		4027EE6B08DD2500C1BF6E94 /* BLEConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEConstants.swift; sourceTree = "<group>"; };
 		4CD7E830A5834A54112C3678 /* PeripheralManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeripheralManager.swift; sourceTree = "<group>"; };
@@ -42,7 +46,9 @@
 		5D80699CA7470D90625E8874 /* AncsBridge.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = AncsBridge.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5DAFE504FCCF42292D6F4FE8 /* AncsBridgeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AncsBridgeTests.swift; sourceTree = "<group>"; };
 		6B64A6B42E55DCF830BD9501 /* BLEViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEViewModel.swift; sourceTree = "<group>"; };
+		72C8FAE0AB0196096C3D7552 /* QuickReplyStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickReplyStore.swift; sourceTree = "<group>"; };
 		77C36C2AFA8EA8C56AF8471D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		8B0BF9F2B6715DF8C2DDD8B8 /* AddWatchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddWatchView.swift; sourceTree = "<group>"; };
 		BE23C48EE7171805E83E7C74 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		BE26FD7165900DB79D1EAA05 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		CD247F6A8BEECDA55C238CC2 /* ConnectionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionState.swift; sourceTree = "<group>"; };
@@ -81,8 +87,10 @@
 		26F4A9B8924E6CCB18948B2A /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				8B0BF9F2B6715DF8C2DDD8B8 /* AddWatchView.swift */,
 				BE26FD7165900DB79D1EAA05 /* ContentView.swift */,
 				03B56BE4BCAB856A9AFE50DB /* HowItWorksView.swift */,
+				0C4E6DA939E59F8521934572 /* QuickReplySettingsView.swift */,
 				BE23C48EE7171805E83E7C74 /* SettingsView.swift */,
 				076673E488AFB468ED2E2EF9 /* StatusView.swift */,
 			);
@@ -103,6 +111,7 @@
 			children = (
 				CD247F6A8BEECDA55C238CC2 /* ConnectionState.swift */,
 				E6C58B6974D26A3FA57422FB /* PairedDevice.swift */,
+				72C8FAE0AB0196096C3D7552 /* QuickReplyStore.swift */,
 			);
 			path = Model;
 			sourceTree = "<group>";
@@ -230,6 +239,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4181448E736418ED1E58AEFC /* AddWatchView.swift in Sources */,
 				9B3BB8D8B67A12F25A4D6F26 /* AncsBridgeApp.swift in Sources */,
 				0D89D3ECFF7D0E5DF95C362D /* BLEConstants.swift in Sources */,
 				0C1339CAF49308EE12D67173 /* BLEViewModel.swift in Sources */,
@@ -238,6 +248,8 @@
 				98910C98FC720871E4544C25 /* HowItWorksView.swift in Sources */,
 				25BCDC2B3260F8615BAF50A9 /* PairedDevice.swift in Sources */,
 				E0FE400394C388A4F3E3D11E /* PeripheralManager.swift in Sources */,
+				BADFA7CC5AEE06DFBD06B68F /* QuickReplySettingsView.swift in Sources */,
+				5A538DB399C1CBD93A665EBA /* QuickReplyStore.swift in Sources */,
 				B6CCF526A866F740469E261D /* SettingsStore.swift in Sources */,
 				C64BBEB053EDA70670D3A4F7 /* SettingsView.swift in Sources */,
 				246322911A02C982C0331924 /* StatusView.swift in Sources */,

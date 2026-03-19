@@ -60,9 +60,11 @@ class IncomingCallActivity : ComponentActivity() {
         const val ACTION_CALLER_NAME_UPDATED = "com.wearos.ancsbridge.CALLER_NAME_UPDATED"
 
         val QUICK_REPLIES = listOf(
-            "Can't talk now",
-            "I'll call you later",
-            "In a meeting"
+            "Can't talk right now.",
+            "Hey! Can't talk rn, what's up?",
+            "I'll call you back shortly.",
+            "In a meeting, will call later.",
+            "Driving right now, will call later."
         )
     }
 
@@ -169,6 +171,7 @@ class IncomingCallActivity : ComponentActivity() {
             action = AncsService.ACTION_SEND_QUICK_REPLY
             putExtra(AncsService.EXTRA_QUICK_REPLY_TEXT, message)
             putExtra(NotificationActionReceiver.EXTRA_NOTIFICATION_UID, notificationUid)
+            putExtra("caller_name", callerNameState.value)
         }
         startService(intent)
 

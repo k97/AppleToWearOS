@@ -6,45 +6,46 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("Connection") {
-                    Toggle("Auto-Advertise on Launch",
-                           isOn: Binding(
-                               get: { viewModel.peripheralManager.settingsStore.autoAdvertise },
-                               set: { viewModel.peripheralManager.settingsStore.autoAdvertise = $0 }
-                           ))
-
-                    HStack {
-                        Text("Bluetooth")
-                        Spacer()
-                        Text(bluetoothStatusText)
-                            .foregroundColor(.secondary)
+                // Features
+                Section {
+                    NavigationLink {
+                        QuickReplySettingsView()
+                    } label: {
+                        Label {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Quick Reply Messages")
+                                Text("Decline calls with a preset message")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        } icon: {
+                            Image(systemName: "text.bubble")
+                                .foregroundColor(.blue)
+                        }
                     }
                 }
 
-                Section("About") {
+                // About
+                Section {
+                    NavigationLink {
+                        HowItWorksView()
+                    } label: {
+                        Label("How it Works", systemImage: "questionmark.circle")
+                    }
+
                     HStack {
                         Text("Version")
                         Spacer()
                         Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")
                             .foregroundColor(.secondary)
                     }
-                }
-
-                Section(footer: Text("WearBridge uses Apple's Notification Center Service (ANCS) to forward notifications from your iPhone to your Pixel Watch over Bluetooth Low Energy. No data is sent to the cloud — everything stays between your devices.")) {
-                    EmptyView()
+                } header: {
+                    Text("About")
+                } footer: {
+                    Text("WearBridge uses Apple's ANCS to forward notifications over Bluetooth. All data stays local.")
                 }
             }
             .navigationTitle("Settings")
-        }
-    }
-
-    private var bluetoothStatusText: String {
-        switch viewModel.peripheralManager.bluetoothState {
-        case .poweredOn: return "On"
-        case .poweredOff: return "Off"
-        case .unauthorized: return "Unauthorized"
-        case .unsupported: return "Unsupported"
-        default: return "Unknown"
         }
     }
 }

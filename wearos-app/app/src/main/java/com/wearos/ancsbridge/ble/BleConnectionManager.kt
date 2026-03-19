@@ -307,6 +307,30 @@ class BleConnectionManager(private val context: Context) {
         }
     }
 
+    /**
+     * Write quick reply payload to the iPhone companion app via BLE.
+     * Format: "callerName|replyMessage"
+     */
+    fun writeQuickReply(payload: String) {
+        val gatt = this.gatt ?: run {
+            Log.e(TAG, "writeQuickReply: no GATT connection")
+            return
+        }
+        val service = gatt.getService(AncsConstants.COMPANION_SERVICE_UUID) ?: run {
+            Log.e(TAG, "writeQuickReply: companion service not found")
+            return
+        }
+        val char = service.getCharacteristic(AncsConstants.QUICK_REPLY_CHARACTERISTIC_UUID) ?: run {
+            Log.e(TAG, "writeQuickReply: quick reply characteristic not found")
+            return
+        }
+        val data = payload.toByteArray(Charsets.UTF_8)
+        char.value = data
+        char.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+        val success = gatt.writeCharacteristic(char)
+        Log.i(TAG, "writeQuickReply: wrote ${data.size} bytes, success=$success")
+    }
+
     fun disconnect() {
         autoReconnect = false
         reconnectJob?.cancel()

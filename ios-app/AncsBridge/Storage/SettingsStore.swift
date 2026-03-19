@@ -15,9 +15,9 @@ class SettingsStore: ObservableObject {
 
     init() {
         self.autoAdvertise = defaults.bool(forKey: Keys.autoAdvertise)
-        // Default to true on first launch
+        // Default to false — discoverability only via Add New Watch flow
         if !defaults.contains(key: Keys.autoAdvertise) {
-            self.autoAdvertise = true
+            self.autoAdvertise = false
         }
     }
 
