@@ -126,6 +126,13 @@ class AncsService : Service() {
             }
         }
 
+        // Listen for companion app call state events (Live Call Status feature)
+        scope.launch {
+            connectionManager.callStateEvents.collect { data ->
+                handleCompanionCallState(data)
+            }
+        }
+
         // Update service notification and shared state based on connection state
         scope.launch {
             connectionManager.connectionState.collectLatest { state ->
@@ -251,6 +258,20 @@ class AncsService : Service() {
                     return
                 }
 
+                // MODIFIED on active call = call was answered on iPhone.
+                // Transition the call overlay to "Active on iPhone" state.
+                if (event.isModified && event.isIncomingCall && activeCallUid == event.notificationUid) {
+                    Log.i(TAG, "Call MODIFIED (answered on iPhone) uid=${event.notificationUid}")
+                    vibrator.cancel()
+                    // Cancel the CallStyle notification — no longer ringing
+                    notificationManager.cancel(NOTIFICATION_ID_CALL)
+                    // Tell the activity to transition to "active call" UI
+                    sendBroadcast(Intent(IncomingCallActivity.ACTION_CALL_ANSWERED).apply {
+                        setPackage(packageName)
+                    })
+                    return
+                }
+
                 if (event.isIncomingCall) {
                     // IMMEDIATELY show call screen — don't wait for attribute fetch.
                     // The NS payload already tells us it's a call. We'll update
@@ -296,6 +317,49 @@ class AncsService : Service() {
                 // If this was an incoming call, dismiss everything
                 if (event.isIncomingCall || activeCallUid == event.notificationUid) {
                     Log.i(TAG, "Call ended (REMOVE) uid=${event.notificationUid}")
+                    activeCallUid = -1
+                    vibrator.cancel()
+                    notificationManager.cancel(NOTIFICATION_ID_CALL)
+                    AncsConnectionService.endActiveCall()
+                    sendBroadcast(Intent(IncomingCallActivity.ACTION_CALL_ENDED).apply {
+                        setPackage(packageName)
+                    })
+                }
+            }
+        }
+    }
+
+    /**
+     * Handle call state pushed from the iOS companion app via BLE.
+     * This is the "Live Call Status" feature — more reliable than ANCS MODIFIED events.
+     * Values: 0x00=idle, 0x01=ringing, 0x02=active (answered), 0x03=ended
+     */
+    private fun handleCompanionCallState(data: ByteArray) {
+        if (data.isEmpty()) return
+        val state = data[0]
+        Log.i(TAG, "Companion call state: ${when (state) {
+            AncsConstants.CALL_STATE_RINGING -> "ringing"
+            AncsConstants.CALL_STATE_ACTIVE -> "active"
+            AncsConstants.CALL_STATE_ENDED -> "ended"
+            else -> "idle"
+        }}")
+
+        when (state) {
+            AncsConstants.CALL_STATE_ACTIVE -> {
+                // Call was answered on iPhone — transition overlay
+                if (activeCallUid != -1L) {
+                    Log.i(TAG, "Companion: call answered on iPhone, transitioning overlay")
+                    vibrator.cancel()
+                    notificationManager.cancel(NOTIFICATION_ID_CALL)
+                    sendBroadcast(Intent(IncomingCallActivity.ACTION_CALL_ANSWERED).apply {
+                        setPackage(packageName)
+                    })
+                }
+            }
+            AncsConstants.CALL_STATE_ENDED -> {
+                // Call ended on iPhone — dismiss everything
+                if (activeCallUid != -1L) {
+                    Log.i(TAG, "Companion: call ended on iPhone, dismissing overlay")
                     activeCallUid = -1
                     vibrator.cancel()
                     notificationManager.cancel(NOTIFICATION_ID_CALL)

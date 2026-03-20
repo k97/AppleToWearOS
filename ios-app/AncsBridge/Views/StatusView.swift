@@ -104,17 +104,25 @@ struct StatusView: View {
                             )
                         )
 
-                        // Title + subtitle + button
-                        VStack(alignment: .leading, spacing: 10) {
+                        // Title + subtitle + trust points + button
+                        VStack(alignment: .leading, spacing: 12) {
                             Text("Your iPhone, on your wrist")
                                 .font(.title3)
                                 .fontWeight(.bold)
                                 .foregroundColor(.primary)
 
-                            Text("Calls, messages, and notifications — mirrored instantly over Bluetooth. No cloud, fully private.")
+                            Text("Never miss a call, message, or alert while your phone is across the room. WearBridge mirrors your iPhone notifications to your Wear OS watch in real time — directly over Bluetooth, with nothing leaving your devices.")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
-                                .lineSpacing(2)
+                                .lineSpacing(3)
+
+                            // Trust points
+                            VStack(alignment: .leading, spacing: 6) {
+                                trustPoint(icon: "lock.shield", text: "End-to-end local — no servers, no cloud")
+                                trustPoint(icon: "bolt", text: "Instant delivery via BLE, under 1 second")
+                                trustPoint(icon: "apps.iphone", text: "75+ apps with native icons")
+                            }
+                            .padding(.top, 2)
 
                             Button { showFeatureSheet = true } label: {
                                 HStack {
@@ -314,6 +322,20 @@ struct StatusView: View {
                 .offset(x: 14, y: -14)
         }
         .frame(width: 48, height: 48)
+    }
+
+    // MARK: - Trust Point
+
+    private func trustPoint(icon: String, text: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.caption)
+                .foregroundColor(.green)
+                .frame(width: 16)
+            Text(text)
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
     }
 
     // MARK: - Feature Chip

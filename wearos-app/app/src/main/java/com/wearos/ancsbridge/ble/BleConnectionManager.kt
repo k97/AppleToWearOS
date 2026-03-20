@@ -50,6 +50,9 @@ class BleConnectionManager(private val context: Context) {
     private val _dataSourceEvents = MutableSharedFlow<ByteArray>(extraBufferCapacity = 64)
     val dataSourceEvents: SharedFlow<ByteArray> = _dataSourceEvents.asSharedFlow()
 
+    private val _callStateEvents = MutableSharedFlow<ByteArray>(extraBufferCapacity = 16)
+    val callStateEvents: SharedFlow<ByteArray> = _callStateEvents.asSharedFlow()
+
     private var gatt: BluetoothGatt? = null
     private var targetDevice: BluetoothDevice? = null
     private var reconnectJob: Job? = null
@@ -193,6 +196,11 @@ class BleConnectionManager(private val context: Context) {
                     readGapDeviceName()
                     // Read companion status to notify iPhone app
                     readCompanionStatus()
+                    // Subscribe to call state from companion app (if available)
+                    scope.launch {
+                        delay(500) // Small delay to avoid GATT queue congestion
+                        subscribeToCallState()
+                    }
                 }
             }
 
@@ -211,6 +219,9 @@ class BleConnectionManager(private val context: Context) {
         },
         onCharacteristicReadCallback = { characteristic, value ->
             onCharacteristicRead(characteristic.uuid, value)
+        },
+        onCallStateChanged = { data ->
+            _callStateEvents.tryEmit(data)
         }
     )
 
@@ -369,6 +380,24 @@ class BleConnectionManager(private val context: Context) {
         } else {
             Log.d(TAG, "Companion service not found — iPhone companion app may not be running")
         }
+    }
+
+    /**
+     * Subscribe to the call state characteristic from the iOS companion app.
+     * When enabled, the companion pushes real-time call state (ringing/active/ended).
+     */
+    fun subscribeToCallState() {
+        val gatt = this.gatt ?: return
+        val service = gatt.getService(AncsConstants.COMPANION_SERVICE_UUID) ?: run {
+            Log.d(TAG, "subscribeToCallState: companion service not found")
+            return
+        }
+        val char = service.getCharacteristic(AncsConstants.CALL_STATE_CHARACTERISTIC_UUID) ?: run {
+            Log.d(TAG, "subscribeToCallState: call state characteristic not found")
+            return
+        }
+        subscribeToCharacteristic(char)
+        Log.i(TAG, "Subscribing to call state characteristic")
     }
 
     /**

@@ -11,6 +11,7 @@
 		0D89D3ECFF7D0E5DF95C362D /* BLEConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4027EE6B08DD2500C1BF6E94 /* BLEConstants.swift */; };
 		246322911A02C982C0331924 /* StatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 076673E488AFB468ED2E2EF9 /* StatusView.swift */; };
 		25BCDC2B3260F8615BAF50A9 /* PairedDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6C58B6974D26A3FA57422FB /* PairedDevice.swift */; };
+		3444128F7B515916482238DB /* CallStateObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDDD1DF5401A97F3ECA524FC /* CallStateObserver.swift */; };
 		3DA84E7D7CE3E1D3A54D315E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 77C36C2AFA8EA8C56AF8471D /* Assets.xcassets */; };
 		4181448E736418ED1E58AEFC /* AddWatchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B0BF9F2B6715DF8C2DDD8B8 /* AddWatchView.swift */; };
 		5A538DB399C1CBD93A665EBA /* QuickReplyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72C8FAE0AB0196096C3D7552 /* QuickReplyStore.swift */; };
@@ -52,6 +53,7 @@
 		BE23C48EE7171805E83E7C74 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		BE26FD7165900DB79D1EAA05 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		CD247F6A8BEECDA55C238CC2 /* ConnectionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionState.swift; sourceTree = "<group>"; };
+		DDDD1DF5401A97F3ECA524FC /* CallStateObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallStateObserver.swift; sourceTree = "<group>"; };
 		DE9E7EB20D69D96663FD95A3 /* AncsBridge.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AncsBridge.entitlements; sourceTree = "<group>"; };
 		E6C58B6974D26A3FA57422FB /* PairedDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairedDevice.swift; sourceTree = "<group>"; };
 		F7CC11B1B20F374C838167B5 /* SettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStore.swift; sourceTree = "<group>"; };
@@ -136,6 +138,7 @@
 			isa = PBXGroup;
 			children = (
 				4027EE6B08DD2500C1BF6E94 /* BLEConstants.swift */,
+				DDDD1DF5401A97F3ECA524FC /* CallStateObserver.swift */,
 				4CD7E830A5834A54112C3678 /* PeripheralManager.swift */,
 			);
 			path = BLE;
@@ -243,6 +246,7 @@
 				9B3BB8D8B67A12F25A4D6F26 /* AncsBridgeApp.swift in Sources */,
 				0D89D3ECFF7D0E5DF95C362D /* BLEConstants.swift in Sources */,
 				0C1339CAF49308EE12D67173 /* BLEViewModel.swift in Sources */,
+				3444128F7B515916482238DB /* CallStateObserver.swift in Sources */,
 				BAF4F26B9E9AC17651F796F1 /* ConnectionState.swift in Sources */,
 				B95E39797258FB0B69F70575 /* ContentView.swift in Sources */,
 				98910C98FC720871E4544C25 /* HowItWorksView.swift in Sources */,

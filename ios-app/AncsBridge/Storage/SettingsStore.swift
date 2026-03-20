@@ -7,17 +7,30 @@ class SettingsStore: ObservableObject {
     private enum Keys {
         static let autoAdvertise = "autoAdvertise"
         static let pairedDevices = "pairedDevices"
+        static let liveCallStatus = "liveCallStatus"
     }
 
     @Published var autoAdvertise: Bool {
         didSet { defaults.set(autoAdvertise, forKey: Keys.autoAdvertise) }
     }
 
+    /// When enabled, uses CallKit to monitor phone call state and pushes
+    /// real-time updates to the watch over BLE. Off by default — requires
+    /// the companion app to be running during calls.
+    @Published var liveCallStatus: Bool {
+        didSet { defaults.set(liveCallStatus, forKey: Keys.liveCallStatus) }
+    }
+
     init() {
         self.autoAdvertise = defaults.bool(forKey: Keys.autoAdvertise)
+        self.liveCallStatus = defaults.bool(forKey: Keys.liveCallStatus)
         // Default to false — discoverability only via Add New Watch flow
         if !defaults.contains(key: Keys.autoAdvertise) {
             self.autoAdvertise = false
+        }
+        // Default to false — opt-in for live call status
+        if !defaults.contains(key: Keys.liveCallStatus) {
+            self.liveCallStatus = false
         }
     }
 

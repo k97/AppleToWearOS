@@ -26,8 +26,12 @@ class PeripheralManager: NSObject, ObservableObject {
 
     private var companionService: CBMutableService?
     private var statusCharacteristic: CBMutableCharacteristic?
+    private var callStateCharacteristic: CBMutableCharacteristic?
     private var serviceAdded = false
     private var scanTimer: Timer?
+
+    /// Monitors phone call state via CallKit for live call status sync
+    let callStateObserver = CallStateObserver()
 
     /// Standard BLE service UUIDs to probe for connected devices.
     /// Wear OS watches expose these standard GATT services.
@@ -61,6 +65,37 @@ class PeripheralManager: NSObject, ObservableObject {
                 CBCentralManagerOptionShowPowerAlertKey: false
             ]
         )
+
+        // Wire up call state observer to push BLE notifications
+        callStateObserver.onCallStateChanged = { [weak self] state in
+            self?.notifyCallState(state)
+        }
+        // Start/stop based on setting
+        updateCallStateObserving()
+    }
+
+    /// Start or stop call state observing based on the current setting.
+    func updateCallStateObserving() {
+        if settingsStore.liveCallStatus {
+            callStateObserver.startObserving()
+        } else {
+            callStateObserver.stopObserving()
+        }
+    }
+
+    /// Push call state to all subscribed watches via BLE notification.
+    private func notifyCallState(_ state: UInt8) {
+        guard let char = callStateCharacteristic else { return }
+        let data = Data([state])
+        let sent = peripheralManager.updateValue(data, for: char, onSubscribedCentrals: nil)
+        let stateStr: String
+        switch state {
+        case BLEConstants.callStateRinging: stateStr = "ringing"
+        case BLEConstants.callStateActive: stateStr = "active"
+        case BLEConstants.callStateEnded: stateStr = "ended"
+        default: stateStr = "idle"
+        }
+        logger.info("Call state BLE notify: \(stateStr), sent=\(sent)")
     }
 
     // MARK: - Connected Watch Discovery
@@ -207,11 +242,18 @@ class PeripheralManager: NSObject, ObservableObject {
             permissions: [.writeable]
         )
 
+        callStateCharacteristic = CBMutableCharacteristic(
+            type: BLEConstants.callStateCharacteristicUUID,
+            properties: [.read, .notify],
+            value: nil,
+            permissions: [.readable]
+        )
+
         companionService = CBMutableService(
             type: BLEConstants.companionServiceUUID,
             primary: true
         )
-        companionService?.characteristics = [statusCharacteristic!, quickReplyCharacteristic]
+        companionService?.characteristics = [statusCharacteristic!, quickReplyCharacteristic, callStateCharacteristic!]
 
         peripheralManager.add(companionService!)
         serviceAdded = true
@@ -260,6 +302,9 @@ extension PeripheralManager: CBPeripheralManagerDelegate {
     func peripheralManager(_ peripheral: CBPeripheralManager, didReceiveRead request: CBATTRequest) {
         if request.characteristic.uuid == BLEConstants.connectionStatusUUID {
             request.value = Data([0x01])
+            peripheral.respond(to: request, withResult: .success)
+        } else if request.characteristic.uuid == BLEConstants.callStateCharacteristicUUID {
+            request.value = Data([callStateObserver.currentState])
             peripheral.respond(to: request, withResult: .success)
         } else {
             peripheral.respond(to: request, withResult: .attributeNotFound)

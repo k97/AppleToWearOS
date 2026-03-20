@@ -57,7 +57,13 @@ class IncomingCallActivity : ComponentActivity() {
         const val EXTRA_NOTIFICATION_UID = "notification_uid"
         const val EXTRA_APP_NAME = "app_name"
         const val ACTION_CALL_ENDED = "com.wearos.ancsbridge.CALL_ENDED"
+        const val ACTION_CALL_ANSWERED = "com.wearos.ancsbridge.CALL_ANSWERED"
         const val ACTION_CALLER_NAME_UPDATED = "com.wearos.ancsbridge.CALLER_NAME_UPDATED"
+
+        /** Auto-dismiss after this many ms if no ANCS event arrives */
+        private const val AUTO_DISMISS_TIMEOUT_MS = 45_000L
+        /** After call is answered on iPhone, auto-dismiss after this many ms */
+        private const val ACTIVE_CALL_DISMISS_MS = 5_000L
 
         val QUICK_REPLIES = listOf(
             "Can't talk right now.",
@@ -71,11 +77,20 @@ class IncomingCallActivity : ComponentActivity() {
     private var notificationUid: Long = -1
     private var showingReplies = mutableStateOf(false)
     private var callerNameState = mutableStateOf("Unknown Caller")
+    /** true = call was answered on iPhone, show "Active on iPhone" UI */
+    private var callAnsweredOnPhone = mutableStateOf(false)
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
 
     private val callEndedReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
                 ACTION_CALL_ENDED -> finish()
+                ACTION_CALL_ANSWERED -> {
+                    // Call was answered on iPhone — transition to "active call" UI
+                    callAnsweredOnPhone.value = true
+                    // Auto-dismiss after a few seconds
+                    handler.postDelayed({ finish() }, ACTIVE_CALL_DISMISS_MS)
+                }
                 ACTION_CALLER_NAME_UPDATED -> {
                     val name = intent.getStringExtra(EXTRA_CALLER_NAME)
                     if (!name.isNullOrEmpty()) {
@@ -106,16 +121,26 @@ class IncomingCallActivity : ComponentActivity() {
 
         val filter = IntentFilter().apply {
             addAction(ACTION_CALL_ENDED)
+            addAction(ACTION_CALL_ANSWERED)
             addAction(ACTION_CALLER_NAME_UPDATED)
         }
         registerReceiver(callEndedReceiver, filter, RECEIVER_NOT_EXPORTED)
+
+        // Safety timeout: auto-dismiss if no ANCS REMOVE/MODIFIED arrives
+        handler.postDelayed({ finish() }, AUTO_DISMISS_TIMEOUT_MS)
 
         setContent {
             AncsBridgeTheme {
                 val showReplies by showingReplies
                 val callerName by callerNameState
+                val answeredOnPhone by callAnsweredOnPhone
 
-                if (showReplies) {
+                if (answeredOnPhone) {
+                    CallActiveOnPhoneScreen(
+                        callerName = callerName,
+                        onDismiss = { finish() }
+                    )
+                } else if (showReplies) {
                     QuickReplyScreen(
                         callerName = callerName,
                         replies = QUICK_REPLIES,
@@ -149,6 +174,7 @@ class IncomingCallActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        handler.removeCallbacksAndMessages(null)
         try {
             unregisterReceiver(callEndedReceiver)
         } catch (_: IllegalArgumentException) { }
@@ -345,6 +371,58 @@ fun QuickReplyScreen(
             ) {
                 Text("Back", fontSize = 13.sp)
             }
+        }
+    }
+}
+
+@Composable
+fun CallActiveOnPhoneScreen(
+    callerName: String,
+    onDismiss: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            painter = painterResource(id = R.drawable.ic_call_answer),
+            contentDescription = null,
+            modifier = Modifier.size(28.dp),
+            tint = Color(0xFF22C55E)
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = callerName,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            maxLines = 2
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text(
+            text = "Active on iPhone",
+            fontSize = 12.sp,
+            color = Color(0xFF22C55E),
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Button(
+            onClick = onDismiss,
+            modifier = Modifier.fillMaxWidth(0.6f),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF374151)
+            )
+        ) {
+            Text("Dismiss", fontSize = 13.sp)
         }
     }
 }

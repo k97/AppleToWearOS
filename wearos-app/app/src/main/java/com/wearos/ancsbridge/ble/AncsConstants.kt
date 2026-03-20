@@ -17,6 +17,15 @@ object AncsConstants {
     // Quick Reply Characteristic UUID (writable — sends reply text to iPhone)
     val QUICK_REPLY_CHARACTERISTIC_UUID: UUID = UUID.fromString("A0E3D5B3-4C6F-4E8A-9B2D-7F1E3A5C8D0B")
 
+    // Call State Characteristic UUID (readable, notifiable — iPhone pushes call state to watch)
+    val CALL_STATE_CHARACTERISTIC_UUID: UUID = UUID.fromString("A0E3D5B4-4C6F-4E8A-9B2D-7F1E3A5C8D0B")
+
+    // Call state values (matches iOS BLEConstants)
+    const val CALL_STATE_IDLE: Byte = 0x00
+    const val CALL_STATE_RINGING: Byte = 0x01
+    const val CALL_STATE_ACTIVE: Byte = 0x02
+    const val CALL_STATE_ENDED: Byte = 0x03
+
     // ANCS Characteristic UUIDs
     val NOTIFICATION_SOURCE_UUID: UUID = UUID.fromString("9FBF120D-6301-42D9-8C58-25E699A21DBD")
     val CONTROL_POINT_UUID: UUID = UUID.fromString("69D1D8F3-45E1-49A8-9821-9BBDFDAAD9D9")
